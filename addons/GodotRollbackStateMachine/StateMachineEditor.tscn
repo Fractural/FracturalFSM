@@ -1,22 +1,26 @@
-[gd_scene load_steps=4 format=2]
+[gd_scene load_steps=5 format=2]
 
-[ext_resource path="res://addons/GodotRollbackStateMachine/TransitionNode.cs" type="Script" id=1]
 [ext_resource path="res://addons/GodotRollbackStateMachine/StateNode.cs" type="Script" id=2]
 [ext_resource path="res://addons/GodotRollbackStateMachine/StateMachineGraphEdit.cs" type="Script" id=3]
+[ext_resource path="res://addons/GodotRollbackStateMachine/Assets/default_theme.tres" type="Theme" id=4]
+[ext_resource path="res://addons/GodotRollbackStateMachine/TransitionLine.cs" type="Script" id=5]
 
 [node name="StateMachineEditor" type="Control"]
 anchor_right = 1.0
 anchor_bottom = 1.0
+theme = ExtResource( 4 )
 
 [node name="StateMachineGraphEdit" type="GraphEdit" parent="."]
 anchor_right = 1.0
 anchor_bottom = 1.0
 script = ExtResource( 3 )
 
-[node name="TransitionNode" type="Control" parent="StateMachineGraphEdit"]
-margin_right = 40.0
-margin_bottom = 40.0
-script = ExtResource( 1 )
+[node name="TransitionLine" type="Control" parent="StateMachineGraphEdit"]
+margin_left = 132.0
+margin_top = 125.0
+margin_right = 195.0
+margin_bottom = 125.0
+script = ExtResource( 5 )
 SourcePath = NodePath("../StateNode")
 DestinationPath = NodePath("../StateNode2")
 
@@ -24,20 +28,20 @@ DestinationPath = NodePath("../StateNode2")
 margin_right = 122.0
 margin_bottom = 97.0
 mouse_filter = 1
-title = "asdfasdf"
+title = "State"
 slot/0/left_enabled = false
-slot/0/left_type = 0
+slot/0/left_type = 1
 slot/0/left_color = Color( 1, 1, 1, 1 )
 slot/0/right_enabled = false
-slot/0/right_type = 0
+slot/0/right_type = 1
 slot/0/right_color = Color( 1, 1, 1, 1 )
 script = ExtResource( 2 )
 
 [node name="Label" type="Label" parent="StateMachineGraphEdit/StateNode"]
-margin_left = 16.0
-margin_top = 50.0
-margin_right = 106.0
-margin_bottom = 64.0
+margin_left = 28.0
+margin_top = 47.0
+margin_right = 94.0
+margin_bottom = 69.0
 size_flags_vertical = 6
 text = "State 2"
 
@@ -47,17 +51,17 @@ margin_bottom = 90.0
 mouse_filter = 1
 title = "State"
 slot/0/left_enabled = false
-slot/0/left_type = 0
+slot/0/left_type = 1
 slot/0/left_color = Color( 1, 1, 1, 1 )
 slot/0/right_enabled = false
-slot/0/right_type = 0
+slot/0/right_type = 1
 slot/0/right_color = Color( 1, 1, 1, 1 )
 script = ExtResource( 2 )
 
 [node name="Label" type="Label" parent="StateMachineGraphEdit/StateNode2"]
-margin_left = 16.0
-margin_top = 47.0
-margin_right = 106.0
-margin_bottom = 61.0
+margin_left = 28.0
+margin_top = 43.0
+margin_right = 94.0
+margin_bottom = 65.0
 size_flags_vertical = 6
 text = "State"

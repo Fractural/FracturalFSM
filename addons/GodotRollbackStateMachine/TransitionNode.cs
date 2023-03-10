@@ -1,47 +1,44 @@
 ﻿using Fractural.GodotCodeGenerator.Attributes;
 using Godot;
+using Fractural.Utils;
 
-public partial class TransitionNode : Control
+public partial class TransitionNode : GraphNode
 {
     [OnReadyGet]
     private StateNode source;
     [OnReadyGet]
     private StateNode destination;
+    [OnReadyGet]
+    private TransitionLine sourceLine;
+    [OnReadyGet]
+    private TransitionLine destinationLine;
 
     private Vector2 sourcePrevPos;
-
     private Vector2 destPrevPos;
 
     [OnReady]
     public void RealReady()
     {
-        GD.Print("Ready");
+        sourceLine.Source = source;
+        sourceLine.Destination = this;
+        destinationLine.Source = this;
+        destinationLine.Destination = destination;
+
+        CallDeferred(nameof(UnparentLines));
+        Connect("dragged", this, nameof(OnDragged));
     }
 
-    public override void _Process(float delta)
+    private void UnparentLines()
     {
-        if (source.RectPosition != sourcePrevPos || destination.RectPosition != destPrevPos)
-        {
-            sourcePrevPos = source.RectPosition;
-            destPrevPos = destination.RectPosition;
-            Update();
-        }
+        sourceLine.Reparent(GetParent());
+        destinationLine.Reparent(GetParent());
+        sourceLine.RectPosition = Vector2.Zero;
+        destinationLine.RectPosition = Vector2.Zero;
     }
-    public override void _Draw()
-    {
-        base._Draw();
-        var color = Colors.White;
-        color.a = 0.5f;
-        DrawLine(source.GetScaledRect().GetCenter(), destination.GetScaledRect().GetCenter(), color, 5 * source.RectScale.x, true);
-    }
-}
 
-public static class Utils
-{
-    public static Rect2 GetScaledRect(this Control item)
+    public void OnDragged(Vector2 from, Vector2 to)
     {
-        Rect2 rect = item.GetRect();
-        rect.Size *= item.RectScale;
-        return rect;
+        GD.Print("Dragged " + from + " " + to);
+        RectPosition = from;
     }
 }
