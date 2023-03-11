@@ -16,7 +16,12 @@ config/icon="res://icon.png"
 
 [editor_plugins]
 
-enabled=PoolStringArray( "res://addons/editor_icon_previewer/plugin.cfg" )
+enabled=PoolStringArray( "res://addons/editor_icon_previewer/plugin.cfg", "res://addons/gd2cs.py/plugin.cfg" )
+
+[gd2cs]
+
+config/ask_no_python=true
+config/python="py"
 
 [gui]
 
