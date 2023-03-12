@@ -32,8 +32,7 @@ namespace GodotRollbackNetcode.StateMachine
 
         // TODO: Replace Godot Dictionaries with C# Generic Dictionaries
 
-
-        public void _Init(string from = "", string to = "", Dictionary conditions = null)
+        public Transition(string from = "", string to = "", Dictionary conditions = null)
         {
             From = from;
             To = to;
@@ -41,7 +40,7 @@ namespace GodotRollbackNetcode.StateMachine
         }
 
         /// <summary>
-        /// Attempt to transit with parameters given, return name of next succeeded ? state : null
+        /// Attempt to transit with parameters given, return name of next succeeded if state else null
         /// </summary>
         /// <param name="transitParams"></param>
         /// <param name="localParams"></param>

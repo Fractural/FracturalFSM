@@ -1,140 +1,133 @@
 
 using System;
 using Godot;
-using Dictionary = Godot.Collections.Dictionary;
-using Array = Godot.Collections.Array;
+using System.Collections.Generic;
+using System.Linq;
+using Fractural.Utils;
 
-
-public class StackPlayer : Node
+namespace GodotRollbackNetcode.StateMachine
 {
-	 
-	[Signal] delegate void Pushed(to);// When item pushed to stack
-	[Signal] delegate void Popped(from);// When item popped from stack
-	
-	// Enum to specify how reseting state stack should trigger Event(transit, push, pop etc.)
-	enum ResetEventTrigger {
-		NONE = -1, // No event
-		ALL = 0, // All removed state will emit event
-		LASTToDest = 1 ;// Only last state && destination will emit event
-	}
-	
-	var current {get{return GetCurrent();}} // Current item on top of stack
-	var stack {get{return GetStack();} set{SetStack(value);}}
-	
-	
-	public void _Init()
-	{  
-		stack = new Array(){};
-	
-	// Push an item to the top of stack
-	}
-	
-	public void Push(__TYPE to)
-	{  
-		var from = GetCurrent();
-		stack.PushBack(to);
-		_OnPushed(from, to);
-		EmitSignal("pushed", to);
-	
-	// Remove the current item on top of stack
-	}
-	
-	public void Pop()
-	{  
-		var to = GetPrevious();
-		var from = stack.PopBack();
-		_OnPopped(from, to);
-		EmitSignal("popped", from);
-	
-	// Called when item pushed
-	}
-	
-	public void _OnPushed(__TYPE from, __TYPE to)
-	{  
-	
-	// Called when item popped
-	}
-	
-	public void _OnPopped(__TYPE from, __TYPE to)
-	{  
-	
-	// Reset stack to given index, -1 to clear all item by default
-	// Use ResetEventTrigger to define how _onPopped should be called
-	}
-	
-	public void Reset(int to=-1, __TYPE event=ResetEventTrigger.ALL)
-	{  
-		System.Diagnostics.Debug.Assert(to > -2 && to < stack.Size(), "Reset to Index(%d) out of Bounds(%d)" % [to, stack.Size()]);
-		var lastIndex = stack.Size() - 1;
-		string firstState = "";
-		var numToPop = lastIndex - to;
-	
-		if(numToPop > 0)
-		{
-			foreach(var i in GD.Range(numToPop))
-			{
-				firstState = i == 0 ? GetCurrent() : firstState
-				switch( event)
-				{
-					case ResetEventTrigger.LAST_TO_DEST:
-						stack.PopBack();
-						if(i == numToPop - 1)
-						{
-							stack.PushBack(firstState);
-							Pop();
-						}
-						break;
-					case ResetEventTrigger.ALL:
-						Pop();
-						break;
-					case _:
-						stack.PopBack();
-						break;
-				}
-			}
-		}
-		else if(numToPop == 0)
-		{
-			switch( event)
-			{
-				case ResetEventTrigger.NONE:
-					stack.PopBack();
-					break;
-				case _:
-					Pop();
-	
-					break;
-			}
-		}
-	}
-	
-	public void SetStack(__TYPE stack)
-	{  
-		GD.PushWarning("Attempting to edit read-only state stack directly. " \
-			+ "Control state machine from setting parameters || call Update() instead");
-	
-	// Get duplicate of the stack being played
-	}
-	
-	public __TYPE GetStack()
-	{  
-		return stack.Duplicate();
-	
-	}
-	
-	public __TYPE GetCurrent()
-	{  
-		return !stack.Empty() ? stack.Back() : null
-	
-	}
-	
-	public __TYPE GetPrevious()
-	{  
-		return stack.Size() > 1 ? stack[stack.Size() - 2] : null
-	
-	
-	}
-	
-	
-	
+    public class StackPlayer : Node
+    {
+
+        [Signal] public delegate void Pushed(string to);    // When item pushed to stack
+        [Signal] public delegate void Popped(string from);  // When item popped from stack
+
+        /// <summary>
+        /// Enum to specify how reseting state stack should trigger Event(transit, push, pop etc.)
+        /// </summary>
+        public enum ResetEventTrigger
+        {
+            None = -1,      // No event
+            All = 0,        // All removed state will emit event
+            LastToDest = 1  // Only last state && destination will emit event
+        }
+
+        /// <summary>
+        /// State before the current state.
+        /// </summary>
+        public virtual string Previous => stack.Count > 1 ? stack.Skip(1).First() : null;
+        /// <summary>
+        /// Current item on top of stack
+        /// </summary>
+        public virtual string Current => stack.FirstOrDefault();
+        private List<string> stack; // We use a list as a stack becasue we need to also access items by index in case of a refresh
+        public IReadOnlyList<string> Stack => stack;
+
+        public StackPlayer()
+        {
+            stack = new List<string>();
+        }
+
+        /// <summary>
+        /// Push an item to the top of stackz
+        /// </summary>
+        /// <param name="to"></param>
+        public void Push(string to)
+        {
+            var from = Current;
+            stack.PushBack(to);
+            OnPushed(from, to);
+            EmitSignal(nameof(Pushed), to);
+        }
+
+        /// <summary>
+        /// Remove the current item on top of stack
+        /// </summary>
+        public void Pop()
+        {
+            var to = Previous;
+            var from = stack.PopBack();
+            OnPopped(from, to);
+            EmitSignal(nameof(Popped), from);
+        }
+
+        /// <summary>
+        /// Called when item pushed
+        /// </summary>
+        /// <param name="from"></param>
+        /// <param name="to"></param>
+        public virtual void OnPushed(string from, string to) { }
+
+        /// <summary>
+        /// Called when item popped
+        /// </summary>
+        /// <param name="from"></param>
+        /// <param name="to"></param>
+        public virtual void OnPopped(string from, string to) { }
+
+        /// <summary>
+        /// Reset stack back to a given index, -1 to clear all item by default.
+        /// This index is inclusive, so the item at index will also get popped.
+        /// This operation ONLY pops items from the stack, so index &lt; count
+        /// Use ResetEventTrigger to define how OnPopped should be called
+        /// </summary>
+        /// <param name="index"></param>
+        /// <param name="resetEventTrigger"></param>
+        public virtual void Reset(int index = -1, ResetEventTrigger resetEventTrigger = ResetEventTrigger.All)
+        {
+            System.Diagnostics.Debug.Assert(index > -2 && index < stack.Count, $"Reset to Index({index}) out of Bounds({stack.Count})");
+            var lastIndex = stack.Count - 1;
+            string firstState = "";
+            var numToPop = lastIndex - index;
+
+            if (numToPop > 0)
+            {
+                for (int i = 0; i < numToPop; i++)
+                {
+                    firstState = i == 0 ? Current : firstState;
+
+                    switch (resetEventTrigger)
+                    {
+                        case ResetEventTrigger.LastToDest:
+                            stack.PopBack();
+                            if (i == numToPop - 1)
+                            {
+                                stack.PushBack(firstState);
+                                Pop();
+                            }
+                            break;
+                        case ResetEventTrigger.All:
+                            Pop();
+                            break;
+                        default:
+                            stack.PopBack();
+                            break;
+                    }
+                }
+            }
+            else if (numToPop == 0)
+            {
+                switch (resetEventTrigger)
+                {
+                    case ResetEventTrigger.None:
+                        stack.PopBack();
+                        break;
+                    default:
+                        Pop();
+                        break;
+                }
+            }
+        }
+    }
 }

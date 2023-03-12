@@ -16,24 +16,21 @@ namespace GodotRollbackNetcode.StateMachine
         [Signal] delegate void TransitionRemoved(Transition transition);// Transition removed
 
         /// <summary>
-        /// States within this StateMachine, keyed by State.name
+        /// States within this StateMachine, keyed by State.Name
+        /// [State.Name] = State
         /// </summary>
         [Export]
         public GDC.Dictionary States { get => states.Duplicate(); set => states = value; }
         private GDC.Dictionary states = new GDC.Dictionary();
-        public State GetState(string state) => states.Get<State>(state);
         public StateMachine GetStateMachine(string state) => GetState(state) as StateMachine;
 
-        // TODO NOW: Fix this.
-
         /// <summary>
-        /// Transitions from this state, keyed by Transition.to
+        /// Transitions from this state, keyed by Transition.To
+        /// [State.Name] = [Transition.To] = Transition
         /// </summary>
         [Export]
         public GDC.Dictionary Transitions { get => transitions.Duplicate(); set => transitions = value; }
         private GDC.Dictionary transitions = new GDC.Dictionary();
-        public GDC.Array<Transition> GetTransitions(string state) => transitions.Get<GDC.Array<Transition>>(state);
-
 
         public void _Init(string name = "", GDC.Dictionary transitions = null, GDC.Dictionary states = null)
         {
@@ -67,7 +64,7 @@ namespace GodotRollbackNetcode.StateMachine
                 basePath = JoinPath(basePath, state);
                 if (endStateMachine != this)
                 {
-                    endStateMachine = endStateMachine.GetState(state);
+                    endStateMachine = endStateMachine.States.Get<StateMachine>(state);
                 }
                 else
                 {
@@ -130,105 +127,99 @@ namespace GodotRollbackNetcode.StateMachine
 
         /// <summary>
         /// Get state from absolute path, for exmaple, "path/to/state" (root == empty string)
-        /// *It is impossible to get parent state machine with path like "../sibling", as StateMachine is !structed as a Tree
+        /// *It is impossible to get parent state machine with path like "../sibling", as StateMachine is not structured as a Tree
         /// </summary>
         /// <param name="path"></param>
         /// <returns></returns>
         public State GetState(string path)
         {
-            State state = null;
             if (path.Empty())
+                return this;
+
+            State state = null;
+            var nestedStates = path.Split("/");
+            foreach (var dir in nestedStates)
             {
-                state = this;
-            }
-            else
-            {
-                var nestedStates = path.Split("/");
-                for (int i = 0; i < nestedStates.Length; i++)
-                {
-                    var dir = nestedStates[i];
-                    if (state != null)
-                    {
-                        state = state.states[dir];
-                    }
-                    else
-                    {
-                        state = States.get[dir]; // First level state
-                    }
-                }
+                if (state != null && state is StateMachine stateMachine)
+                    state = stateMachine.States.Get<State>(dir);
+                else
+                    state = States.Get<State>(dir); // First level state
             }
             return state;
 
         }
 
         /// <summary>
-        /// Add state, state name must be unique within this StateMachine, return state succeed ? added : reutrn null
+        /// Add state, state name must be unique within this StateMachine, return state succeed if added else reutrn null
         /// </summary>
         /// <param name="state"></param>
         /// <returns></returns>
-        public __TYPE AddState(__TYPE state)
+        public State AddState(State state)
         {
-            if (!state)
-            {
+            if (state == null || States.Contains(state.Name))
                 return null;
-            }
-            if (state.name in States)
-		{
-                return null;
-
-            }
-            States[state.name] = state;
+            States[state.Name] = state;
             return state;
-
-            // Remove state by its name
         }
 
-        public __TYPE RemoveState(__TYPE state)
+        /// <summary>
+        /// Remove state by its name
+        /// </summary>
+        /// <param name="state"></param>
+        /// <returns></returns>
+        public bool RemoveState(State state)
         {
-            return States.Erase(state);
-
-            // Change existing state key in States(GDC.Dictionary), return true if success
+            if (States.Contains(state.Name))
+            {
+                States.Remove(state);
+                return true;
+            }
+            return false;
         }
 
-        public __TYPE ChangeStateName(__TYPE from, __TYPE to)
+        /// <summary>
+        /// Change existing state key in States(GDC.Dictionary), return true if success
+        /// </summary>
+        /// <param name="from"></param>
+        /// <param name="to"></param>
+        /// <returns></returns>
+        public bool ChangeStateName(string from, string to)
         {
-            if (!(from in States) || to in States)
-		{
+            if (!States.Contains(from) || States.Contains(to))
                 return false;
 
-            }
-            foreach (var stateKey in States.Keys())
+            foreach (string stateKey in States.Keys)
             {
-                var state = States[stateKey];
+                var state = States.Get<State>(stateKey);
                 var isNameChangingState = stateKey == from;
                 if (isNameChangingState)
                 {
-                    state.name = to;
+                    state.Name = to;
                     States[to] = state;
-                    States.Erase(from);
+                    States.Remove(from);
                 }
-                foreach (var fromKey in Transitions.Keys())
+                foreach (string fromKey in Transitions.Keys)
                 {
-                    var fromTransitions = Transitions[fromKey];
+                    var fromTransitions = Transitions.Get<GDC.Dictionary>(fromKey);
                     if (fromKey == from)
                     {
-                        Transitions.Erase(from);
+                        Transitions.Remove(from);
                         Transitions[to] = fromTransitions;
                     }
-                    foreach (var toKey in fromTransitions.Keys())
+                    foreach (string toKey in fromTransitions.Keys)
                     {
-                        var transition = fromTransitions[toKey];
-                        if (transition.from == from)
+                        var transition = fromTransitions.Get<Transition>(toKey);
+                        if (transition.From == from)
                         {
-                            transition.from = to;
+                            transition.From = to;
                         }
-                        else if (transition.to == from)
+                        else if (transition.To == from)
                         {
-                            transition.to = to;
-                            if (!is_name_changing_state)
+                            transition.To = to;
+                            if (!isNameChangingState)
                             {
                                 // Transitions to name changed state needs to be updated
-                                fromTransitions.Erase(from);
+                                fromTransitions.Remove(from);
                                 fromTransitions[to] = transition;
                             }
                         }
@@ -240,49 +231,43 @@ namespace GodotRollbackNetcode.StateMachine
         }
 
         /// <summary>
-        /// Add transition, Transition.from must be equal to this state's name && Transition.to !added yet
+        /// Add transition, Transition.From must be equal to this state's name && Transition.To !added yet
         /// </summary>
-        public void AddTransition(__TYPE transition)
+        public void AddTransition(Transition transition)
         {
-            if (!(transition.from || transition.to))
+            if (transition.From == null || transition.To == null)
             {
-                GD.PushWarning("Transition missing from/to (%s/%s)" % [transition.from, transition.to]);
+                GD.PushWarning($"Transition missing from/to ({transition.From}/{transition.To})");
                 return;
-
             }
-            var fromTransitions;
-            if (transition.from in Transitions)
-		{
-                fromTransitions = Transitions[transition.from];
-            }
-
-        else
+            GDC.Dictionary fromTransitions;
+            if (Transitions.Contains(transition.From))
+                fromTransitions = Transitions.Get<GDC.Dictionary>(transition.From);
+            else
             {
                 fromTransitions = new GDC.Dictionary() { };
-                Transitions[transition.from] = fromTransitions;
-
+                Transitions[transition.From] = fromTransitions;
             }
-            fromTransitions[transition.to] = transition;
-            EmitSignal("transition_added", transition);
-
+            fromTransitions[transition.To] = transition;
+            EmitSignal(nameof(TransitionAdded), transition);
         }
 
-        // Remove transition with Transition.To(name of state transiting to)
-        public void RemoveTransition(__TYPE fromState, __TYPE toState)
+        /// <summary>
+        /// Remove transition with Transition.To(name of state transiting to)
+        /// </summary>
+        /// <param name="fromState"></param>
+        /// <param name="toState"></param>
+        public void RemoveTransition(string fromState, string toState)
         {
-            var fromTransitions = Transitions.Get(fromState);
-            if (fromTransitions)
+            var fromTransitions = Transitions.Get<GDC.Dictionary>(fromState);
+            if (fromTransitions != null && fromTransitions.Contains(toState))
             {
-                if (toState in fromTransitions)
-			{
-                    fromTransitions.Erase(toState);
-                    if (fromTransitions.Empty())
-                    {
-                        Transitions.Erase(fromState);
-                    }
-                    EmitSignal("transition_removed", fromState, toState);
-
-                }
+                fromTransitions.Remove(toState);
+                if (fromTransitions.Count == 0)
+                    // There are no transitions going out from "fromState", so we remove
+                    // it's entry from the Transitions' dict.
+                    Transitions.Remove(fromState);
+                EmitSignal(nameof(TransitionRemoved), fromState, toState);
             }
         }
 
@@ -304,7 +289,11 @@ namespace GodotRollbackNetcode.StateMachine
             return string.Join("/", dirs);
         }
 
-        // Validate state machine resource to identify && fix error
+        /// <summary>
+        /// Validate state machine resource to identify && fix error
+        /// </summary>
+        /// <param name="stateMachine"></param>
+        /// <returns></returns>
         public bool Validate(StateMachine stateMachine)
         {
             bool validated = false;
@@ -316,40 +305,39 @@ namespace GodotRollbackNetcode.StateMachine
                 {
                     validated = true;
                     GD.PushWarning($"gd-YAFSM Non-existing ValidationError State({fromKey}) found in transition");
-                    stateMachine.transitions.Erase(fromKey);
+                    stateMachine.transitions.Remove(fromKey);
                     continue;
-
                 }
-                var fromTransition = stateMachine.transitions[fromKey];
-                foreach (var toKey in fromTransition.Keys)
+                var fromTransition = stateMachine.transitions.Get<GDC.Dictionary>(fromKey);
+                foreach (string toKey in fromTransition.Keys)
                 {
                     // Non-existing state found in StateMachine.transitions
                     // See https://github.com/imjp94/gd-YAFSM/issues/6
-                    if (!(toKey in stateMachine.states))
-				{
-                        validated = true;
-                        GD.PushWarning($"gd-YAFSM Non-existing ValidationError State({toKey}) found in Transition({fromKey} -> {toKey})");
-                        fromTransition.Erase(toKey);
-                        continue;
-
-                        // Mismatch of StateMachine.transitions with Transition.to 
-                        // See https://github.com/imjp94/gd-YAFSM/issues/6
-                    }
-                    var toTransition = fromTransition[toKey];
-                    if (toKey != toTransition.to)
+                    if (!stateMachine.states.Contains(toKey))
                     {
                         validated = true;
-                        GD.PushWarning($"gd-YAFSM Mismatch ValidationError of StateMachine.transitions Key({toKey}) with Transition.To({toTransition.to})");
-                        toTransition.to = toKey;
+                        GD.PushWarning($"gd-YAFSM Non-existing ValidationError State({toKey}) found in Transition({fromKey} -> {toKey})");
+                        fromTransition.Remove(toKey);
+                        continue;
+
+                        // Mismatch of StateMachine.transitions with Transition.To 
+                        // See https://github.com/imjp94/gd-YAFSM/issues/6
+                    }
+                    var toTransition = fromTransition.Get<Transition>(toKey);
+                    if (toKey != toTransition.To)
+                    {
+                        validated = true;
+                        GD.PushWarning($"gd-YAFSM Mismatch ValidationError of StateMachine.transitions Key({toKey}) with Transition.To({toTransition.To})");
+                        toTransition.To = toKey;
 
                         // Self connecting transition
                         // See https://github.com/imjp94/gd-YAFSM/issues/5
                     }
-                    if (toTransition.from == toTransition.to)
+                    if (toTransition.From == toTransition.To)
                     {
                         validated = true;
-                        GD.PushWarning($"gd-YAFSM Self ValidationError connecting Transition({toTransition.from} -> {toTransition.to})");
-                        fromTransition.Erase(toKey);
+                        GD.PushWarning($"gd-YAFSM Self ValidationError connecting Transition({toTransition.From} -> {toTransition.To})");
+                        fromTransition.Remove(toKey);
                     }
                 }
             }

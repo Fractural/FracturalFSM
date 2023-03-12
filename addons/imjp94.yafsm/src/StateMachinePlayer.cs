@@ -1,616 +1,631 @@
 
 using System;
+using System.Linq;
+using Fractural.GodotCodeGenerator.Attributes;
+using Fractural.Utils;
 using Godot;
-using Dictionary = Godot.Collections.Dictionary;
-using Array = Godot.Collections.Array;
+using GDC = Godot.Collections;
 
-[Tool]
-public class StateMachinePlayer : "StackPlayer.gd"
+namespace GodotRollbackNetcode.StateMachine
 {
-	 
-	public const var State = GD.Load("states/State.gd");
-	
-	[Signal] delegate void Transited(from, to);// Transition of state
-	[Signal] delegate void Entered(to);// Entry of state Machine(including nested), empty string equals to root
-	[Signal] delegate void Exited(from);// Exit of state Machine(including nested, empty string equals to root
-	[Signal] delegate void Updated(state, delta);// Time to Update(based on processMode), up to user to handle any logic, for example, update movement of KinematicBody
-	
-	// Enum to define how state machine should be updated
-	enum ProcessMode {
-		PHYSICS,
-		IDLE,
-		MANUAL
-	}
-	
-	Export(Resource) var stateMachine // StateMachine being played 
-	[Export]  public bool active = true {set{SetActive(value);}} // Activeness of player
-	[Export]  public bool autostart = true ;// Automatically enter Entry state on ready if true
-	[Export]  public ProcessMode processMode = ProcessMode.IDLE {set{SetProcessMode(value);}} // ProcessMode of player
-	
-	private __TYPE _isStarted = false;
-	var _parameters // Parameters to be passed to condition
-	private __TYPE _localParameters;
-	private __TYPE _isUpdateLocked = true;
-	private __TYPE _wasTransited = false ;// If last transition was successful
-	private __TYPE _isParamEdited = false;
-	
-	
-	public void _Init()
-	{  
-		if(Engine.editor_hint)
-		{
-			return;
-	
-		}
-		_parameters = new Dictionary(){};
-		_localParameters = new Dictionary(){};
-		_wasTransited = true ;// Trigger _transit on _ready
-	
-	}
-	
-	public __TYPE _GetConfigurationWarning()
-	{  
-		if(stateMachine)
-		{
-			if(!state_machine.HasEntry())
-			{
-				return "State Machine will !function properly without Entry node";
-			}
-		}
-		else
-		{
-			return "State Machine Player is !going anywhere without default State Machine";
-		}
-		return "";
-	
-	}
-	
-	public void _Ready()
-	{  
-		if(Engine.editor_hint)
-		{
-			return;
-	
-		}
-		SetProcess(false);
-		SetPhysicsProcess(false);
-		CallDeferred("_initiate") ;// Make sure connection of signals can be done in _ready to receive all signal callback
-	
-	}
-	
-	public void _Initiate()
-	{  
-		if(autostart)
-		{
-			Start();
-		}
-		_OnActiveChanged();
-		_OnProcessModeChanged();
-	
-	}
-	
-	public void _Process(__TYPE delta)
-	{  
-		if(Engine.editor_hint)
-		{
-			return;
-	
-		}
-		_UpdateStart();
-		Update(delta);
-		_UpdateEnd();
-	
-	}
-	
-	public void _PhysicsProcess(__TYPE delta)
-	{  
-		if(Engine.editor_hint)
-		{
-			return;
-	
-		}
-		_UpdateStart();
-		Update(delta);
-		_UpdateEnd();
-	
-	// Only get called in 2 condition, _parameters edited || last transition was successful
-	}
-	
-	public void _Transit()
-	{  
-		if(!active)
-		{
-			return;
-		// Attempt to transit if parameter edited || last transition was successful
-		}
-		if(!_is_param_edited && !_was_transited)
-		{
-			return;
-	
-		}
-		var from = GetCurrent();
-		var localParams = _localParameters.Get(PathBackward(from), new Dictionary(){});
-		var nextState = stateMachine.Transit(GetCurrent(), _parameters, localParams);
-		if(nextState)
-		{
-			if(stack.Has(nextState))
-			{
-				Reset(stack.Find(nextState));
-			}
-			else
-			{
-				Push(nextState);
-			}
-		}
-		var to = nextState;
-		_wasTransited = !!next_state;
-		_isParamEdited = false;
-		_FlushTrigger(_parameters);
-		_FlushTrigger(_localParameters, true);
-	
-		if(_wasTransited)
-		{
-			_OnStateChanged(from, to);
-	
-		}
-	}
-	
-	public void _OnStateChanged(__TYPE from, __TYPE to)
-	{  
-		switch( to)
-		{
-			case State.ENTRY_STATE:
-				EmitSignal("entered", "");
-				break;
-			case State.EXIT_STATE:
-				SetActive(false) ;// Disable on exit
-				EmitSignal("exited", "");
-		
-				break;
-		}
-		if(to.EndsWith(State.ENTRY_STATE) && to.Length() > State.ENTRY_STATE.Length())
-		{
-			// Nexted Entry state
-			var state = PathBackward(GetCurrent());
-			EmitSignal("entered", state);
-		}
-		else if(to.EndsWith(State.EXIT_STATE) && to.Length() > State.EXIT_STATE.Length())
-		{
-			// Nested Exit state, clear "local" params
-			var state = PathBackward(GetCurrent());
-			ClearParam(state, false) ;// Clearing params internally, do !update
-			EmitSignal("exited", state);
-	
-		}
-		EmitSignal("transited", from, to);
-	
-	// Called internally if processMode is PHYSICS/IDLE to unlock Update()
-	}
-	
-	public void _UpdateStart()
-	{  
-		_isUpdateLocked = false;
-	
-	// Called internally if processMode is PHYSICS/IDLE to lock Update() from external call
-	}
-	
-	public void _UpdateEnd()
-	{  
-		_isUpdateLocked = true;
-	
-	// Called after Update() which is dependant on processMode, override to process current state
-	}
-	
-	public void _OnUpdated(__TYPE delta, __TYPE state)
-	{  
-	
-	}
-	
-	public void _OnProcessModeChanged()
-	{  
-		if(!active)
-		{
-			return;
-	
-		}
-		switch( processMode)
-		{
-			case ProcessMode.PHYSICS:
-				SetPhysicsProcess(true);
-				SetProcess(false);
-				break;
-			case ProcessMode.IDLE:
-				SetPhysicsProcess(false);
-				SetProcess(true);
-				break;
-			case ProcessMode.MANUAL:
-				SetPhysicsProcess(false);
-				SetProcess(false);
-	
-				break;
-		}
-	}
-	
-	public void _OnActiveChanged()
-	{  
-		if(Engine.editor_hint)
-		{
-			return;
-	
-		}
-		if(active)
-		{
-			_OnProcessModeChanged();
-			_Transit();
-		}
-		else
-		{
-			SetPhysicsProcess(false);
-			SetProcess(false);
-	
-	// Remove all Trigger(param with null value) from provided params, only get called after _transit
-	// Trigger another call of _flushTrigger on first layer of dictionary if nested is true
-		}
-	}
-	
-	public void _FlushTrigger(__TYPE params, bool nested=false)
-	{  
-		foreach(var paramKey in params.Keys())
-		{
-			var value = params[paramKey];
-			if(nested && value is Dictionary)
-			{
-				_FlushTrigger(value);
-			}
-			if(value == null) // Param with null as value is treated as trigger
-			{
-				params.Erase(paramKey);
-	
-			}
-		}
-	}
-	
-	public void Reset(int to=-1, __TYPE event=ResetEventTrigger.LAST_TO_DEST)
-	{  
-		base.Reset(to, event);
-		_wasTransited = true ;// Make sure to call _transit on next update
-	
-	// Manually start the player, automatically called if autostart is true
-	}
-	
-	public void Start()
-	{  
-		Push(State.ENTRY_STATE);
-		EmitSignal("entered", "");
-		_wasTransited = true;
-		_isStarted = true;
-	
-	// Restart player
-	}
-	
-	public void Restart(bool isActive=true, bool preserveParams=false)
-	{  
-		Reset();
-		SetActive(isActive);
-		if(!preserve_params)
-		{
-			ClearParam("", false);
-		}
-		Start();
-	
-	// Update player to, first initiate transition, then call _onUpdated, finally emit "update" signal, delta will be given based on processMode.
-	// Can only be called manually if processMode is MANUAL, otherwise, assertion error will be raised.
-	// *delta provided will be reflected in [Signal] delegate void Updated(state, delta);
-	}
-	
-	public void Update(__TYPE delta=GetPhysicsProcessDeltaTime())
-	{  
-		if(!active)
-		{
-			return;
-		}
-		if(processMode != ProcessMode.MANUAL)
-		{
-			System.Diagnostics.Debug.Assert(!_is_update_locked, "Attempting to update manually with ProcessMode.%s" % ProcessMode.Keys()[processMode]);
-	
-		}
-		_Transit();
-		var currentState = GetCurrent();
-		_OnUpdated(currentState, delta);
-		EmitSignal("updated", currentState, delta);
-		if(processMode == ProcessMode.MANUAL)
-		{
-			// Make sure to auto advance even in MANUAL mode
-			if(_wasTransited)
-			{
-				CallDeferred("update");
-	
-	// Set trigger to be tested with condition, then trigger _transit on next update, 
-	// automatically call Update() if processMode set to MANUAL && autoUpdate true
-	// Nested trigger can be accessed through path "path/to/param_name", for example, "App/Game/is_playing"
-			}
-		}
-	}
-	
-	public void SetTrigger(__TYPE name, bool autoUpdate=true)
-	{  
-		SetParam(name, null, autoUpdate);
-	
-	}
-	
-	public void SetNestedTrigger(__TYPE path, __TYPE name, bool autoUpdate=true)
-	{  
-		SetNestedParam(path, name, null, autoUpdate);
-	
-	// Set Param(null value treated as trigger) to be tested with condition, then trigger _transit on next update, 
-	// automatically call Update() if processMode set to MANUAL && autoUpdate true
-	// Nested param can be accessed through path "path/to/param_name", for example, "App/Game/is_playing"
-	}
-	
-	public void SetParam(__TYPE name, __TYPE value, bool autoUpdate=true)
-	{  
-		string path = "";
-		if("/" in name)
-		{
-			path = PathBackward(name);
-			name = PathEndDir(name);
-		}
-		SetNestedParam(path, name, value, autoUpdate);
-	
-	}
-	
-	public void SetNestedParam(__TYPE path, __TYPE name, __TYPE value, bool autoUpdate=true)
-	{  
-		if(path.Empty())
-		{
-			_parameters[name] = value;
-		}
-		else
-		{
-			var localParams = _localParameters.Get(path);
-			if(localParams is Dictionary)
-			{
-				localParams[name] = value;
-			}
-			else
-			{
-				localParams = new Dictionary(){};
-				localParams[name] = value;
-				_localParameters[path] = localParams;
-			}
-		}
-		_OnParamEdited(autoUpdate);
-	
-	// Remove param, then trigger _transit on next update, 
-	// automatically call Update() if processMode set to MANUAL && autoUpdate true
-	// Nested param can be accessed through path "path/to/param_name", for example, "App/Game/is_playing"
-	}
-	
-	public __TYPE EraseParam(__TYPE name, bool autoUpdate=true)
-	{  
-		string path = "";
-		if("/" in name)
-		{
-			path = PathBackward(name);
-			name = PathEndDir(name);
-		}
-		return EraseNestedParam(path, name, autoUpdate);
-	
-	}
-	
-	public __TYPE EraseNestedParam(__TYPE path, __TYPE name, bool autoUpdate=true)
-	{  
-		bool result = false;
-		if(path.Empty())
-		{
-			result = _parameters.Erase(name);
-		}
-		else
-		{
-			result = _localParameters.Get(path, new Dictionary(){}).Erase(name);
-		}
-		_OnParamEdited(autoUpdate);
-		return result;
-	
-	// Clear params from specified path, empty string to clear all, then trigger _transit on next update, 
-	// automatically call Update() if processMode set to MANUAL && autoUpdate true
-	// Nested param can be accessed through path "path/to/param_name", for example, "App/Game/is_playing"
-	}
-	
-	public void ClearParam(string path="", bool autoUpdate=true)
-	{  
-		if(path.Empty())
-		{
-			_parameters.Clear();
-		}
-		else
-		{
-			_localParameters.Get(path, new Dictionary(){}).Clear();
-			// Clear nested params
-			foreach(var paramKey in _localParameters.Keys())
-			{
-				if(paramKey.BeginsWith(path))
-				{
-					_localParameters.Erase(paramKey);
-	
-	// Called when param edited, automatically call Update() if processMode set to MANUAL && autoUpdate true
-				}
-			}
-		}
-	}
-	
-	public void _OnParamEdited(bool autoUpdate=true)
-	{  
-		_isParamEdited = true;
-		if(processMode == ProcessMode.MANUAL && autoUpdate && _isStarted)
-		{
-			Update();
-	
-	// Get value of param
-	// Nested param can be accessed through path "path/to/param_name", for example, "App/Game/is_playing"
-		}
-	}
-	
-	public __TYPE GetParam(__TYPE name, __TYPE default=null)
-	{  
-		string path = "";
-		if("/" in name)
-		{
-			path = PathBackward(name);
-			name = PathEndDir(name);
-		}
-		return GetNestedParam(path, name, default);
-	
-	}
-	
-	public __TYPE GetNestedParam(__TYPE path, __TYPE name, __TYPE default=null)
-	{  
-		if(path.Empty())
-		{
-			return _parameters.Get(name, default);
-		}
-		else
-		{
-			var localParams = _localParameters.Get(path, new Dictionary(){});
-			return localParams.Get(name, default);
-	
-	// Get duplicate of whole parameter dictionary
-		}
-	}
-	
-	public __TYPE GetParams()
-	{  
-		return _parameters.Duplicate();
-	
-	// Return true if param exists
-	// Nested param can be accessed through path "path/to/param_name", for example, "App/Game/is_playing"
-	}
-	
-	public __TYPE HasParam(__TYPE name)
-	{  
-		string path = "";
-		if("/" in name)
-		{
-			path = PathBackward(name);
-			name = PathEndDir(name);
-		}
-		return HasNestedParam(path, name);
-	
-	}
-	
-	public __TYPE HasNestedParam(__TYPE path, __TYPE name)
-	{  
-		if(path.Empty())
-		{
-			return name in _parameters;
-		}
-		else
-		{
-			var localParams = _localParameters.Get(path, new Dictionary(){});
-			return name in localParams;
-	
-	// Return if player started
-		}
-	}
-	
-	public __TYPE IsEntered()
-	{  
-		return State.ENTRY_STATE in stack;
-	
-	// Return if player ended
-	}
-	
-	public __TYPE IsExited()
-	{  
-		return GetCurrent() == State.EXIT_STATE;
-	
-	}
-	
-	public void SetActive(__TYPE v)
-	{  
-		if(active != v)
-		{
-			if(v)
-			{
-				if(IsExited())
-				{
-					GD.PushWarning("Attempting to make exited StateMachinePlayer active, call Reset() then SetActive() instead");
-					return;
-				}
-			}
-			active = v;
-			_OnActiveChanged();
-	
-		}
-	}
-	
-	public void SetProcessMode(__TYPE mode)
-	{  
-		if(processMode != mode)
-		{
-			processMode = mode;
-			_OnProcessModeChanged();
-	
-		}
-	}
-	
-	public __TYPE GetCurrent()
-	{  
-		var v = base.GetCurrent();
-		return v ? v : ""
-	
-	}
-	
-	public __TYPE GetPrevious()
-	{  
-		var v = base.GetPrevious();
-		return v ? v : ""
-	
-	// Convert node path to state path that can be used to query state with StateMachine.get_state.
-	// Node path, "root/path/to/state", equals to State path, "path/to/state"
-	}
-	
-	public __TYPE NodePathToStatePath(__TYPE nodePath)
-	{  
-		var p = nodePath.Replace("root", "");
-		if(p.BeginsWith("/"))
-		{
-			p = p.Substr(1);
-		}
-		return p;
-	
-	// Convert state path to node path that can be used for query node in scene tree.
-	// State path, "path/to/state", equals to Node path, "root/path/to/state"
-	}
-	
-	public __TYPE StatePathToNodePath(__TYPE statePath)
-	{  
-		var path = statePath;
-		if(path.Empty())
-		{
-			path = "root";
-		}
-		else
-		{
-			path = GD.Str("root/", path);
-		}
-		return path;
-	
-	// Return parent path, "path/to/state" return "path/to"
-	}
-	
-	public __TYPE PathBackward(__TYPE path)
-	{  
-		return path.Substr(0, path.Rfind("/"));
-	
-	// Return end directory of path, "path/to/state" returns "state"
-	}
-	
-	public __TYPE PathEndDir(__TYPE path)
-	{  
-		return path.Right(path.Rfind("/") + 1);
-	}
-	
-	
-	
+    [Tool]
+    public partial class StateMachinePlayer : StackPlayer
+    {
+        [Signal] public delegate void Transited(string from, string to);   // Transition of state
+        [Signal] public delegate void Entered(string to);                  // Entry of state Machine(including nested), empty string equals to root
+        [Signal] public delegate void Exited(string from);                 // Exit of state Machine(including nested, empty string equals to root
+        [Signal] public delegate void Updated(string state, float delta);  // Time to Update(based on processMode), up to user to handle any logic, for example, update movement of KinematicBody
+
+        /// <summary>
+        /// Enum to define how state machine should be updated
+        /// </summary>
+        public enum ProcessModeType
+        {
+            PHYSICS,
+            IDLE,
+            MANUAL
+        }
+
+        [OnReadyGet(OrNull = true)]
+        private StateMachine stateMachine; // StateMachine being played 
+        private bool active = true;
+        /// <summary>
+        /// Whether the state machine player is enabled (active) or not
+        /// </summary>
+        [Export]
+        public bool Active
+        {
+            get => true;
+            set
+            {
+                if (active != value)
+                {
+                    if (value && IsExited)
+                    {
+                        GD.PushWarning("Attempting to make exited StateMachinePlayer active, call Reset() then SetActive() instead");
+                        return;
+                    }
+                    active = value;
+                    OnActiveChanged();
+
+                }
+            }
+        }
+        [Export]
+        public bool Autostart { get; set; } = true; // Automatically enter Entry state on ready if true
+
+        /// <summary>
+        /// ProcessMode of the state machine player
+        /// </summary>
+        [Export]
+        public ProcessModeType ProcessMode
+        {
+            get => processMode;
+            set
+            {
+                if (processMode != value)
+                {
+                    processMode = value;
+                    OnProcessModeChanged();
+                }
+            }
+        }
+        private ProcessModeType processMode = ProcessModeType.IDLE;
+
+        /// <summary>
+        /// If state machine player has started
+        /// </summary>
+        public bool IsEntered => Stack.Contains(State.EntryState);
+
+        /// <summary>
+        /// If state machine player has ended
+        /// </summary>
+        public bool IsExited => Current == State.ExitState;
+
+        public override string Current => base.Current != null ? base.Current : "";
+        public override string Previous => base.Previous != null ? base.Previous : "";
+
+        private GDC.Dictionary parameters; // Parameters to be passed to condition
+        /// <summary>
+        /// Get duplicate of whole parameter dictionary
+        /// </summary>
+        /// <returns></returns>
+        public GDC.Dictionary Parameters => parameters.Duplicate();
+
+        private GDC.Dictionary localParameters;
+
+        private bool isStarted = false;
+        private bool isUpdateLocked = true;
+        private bool wasTransited = false;// If last transition was successful
+        private bool isParamEdited = false;
+
+
+        public StateMachinePlayer() : base()
+        {
+            if (Engine.EditorHint)
+            {
+                return;
+            }
+            parameters = new GDC.Dictionary() { };
+            localParameters = new GDC.Dictionary() { };
+            wasTransited = true;// Trigger _transit on _ready
+        }
+
+        public override string _GetConfigurationWarning()
+        {
+            base._GetConfigurationWarning();
+            if (stateMachine != null)
+            {
+                if (!stateMachine.HasEntry)
+                    return "State Machine will !function properly without Entry node";
+            }
+            else
+                return "State Machine Player is !going anywhere without default State Machine";
+            return "";
+
+        }
+
+        [OnReady]
+        public virtual void RealReady()
+        {
+            if (Engine.EditorHint)
+            {
+                return;
+            }
+            SetProcess(false);
+            SetPhysicsProcess(false);
+            CallDeferred(nameof(_Initiate)); // Make sure connection of signals can be done in _ready to receive all signal callback
+        }
+
+        public void _Initiate()
+        {
+            if (Autostart)
+            {
+                Start();
+            }
+            OnActiveChanged();
+            OnProcessModeChanged();
+
+        }
+
+        public override void _Process(float delta)
+        {
+            if (Engine.EditorHint)
+            {
+                return;
+            }
+            UpdateStart();
+            Update(delta);
+            UpdateEnd();
+
+        }
+
+        public override void _PhysicsProcess(float delta)
+        {
+            if (Engine.EditorHint)
+            {
+                return;
+            }
+            UpdateStart();
+            Update(delta);
+            UpdateEnd();
+
+        }
+
+        // Only get called in 2 condition, _parameters edited || last transition was successful
+        private void Transit()
+        {
+            if (!active)
+                return;
+            // Attempt to transit if parameter edited || last transition was successful
+            if (!isParamEdited && !wasTransited)
+                return;
+            var from = Current;
+            var localParams = localParameters.Get(PathBackward(from), new GDC.Dictionary());
+            var nextState = stateMachine.Transit(Current, parameters, localParams);
+            if (nextState != null)
+            {
+                if (Stack.Contains(nextState))
+                    Reset(Stack.IndexOf(nextState));
+                else
+                    Push(nextState);
+            }
+            var to = nextState;
+            wasTransited = nextState != null;
+            isParamEdited = false;
+            FlushTrigger(parameters);
+            FlushTrigger(localParameters, true);
+
+            if (wasTransited)
+                OnStateChanged(from, to);
+        }
+
+        private void OnStateChanged(string from, string to)
+        {
+            switch (to)
+            {
+                case State.EntryState:
+                    EmitSignal(nameof(Entered), "");
+                    break;
+                case State.ExitState:
+                    Active = false; // Disable on exit
+                    EmitSignal(nameof(Exited), "");
+
+                    break;
+            }
+            if (to.EndsWith(State.EntryState) && to.Length() > State.EntryState.Length())
+            {
+                // Nexted Entry state
+                var state = PathBackward(Current);
+                EmitSignal(nameof(Entered), state);
+            }
+            else if (to.EndsWith(State.ExitState) && to.Length() > State.ExitState.Length())
+            {
+                // Nested Exit state, clear "local" params
+                var state = PathBackward(Current);
+                ClearParam(state, false); // Clearing params internally, do !update
+                EmitSignal(nameof(Exited), state);
+
+            }
+            EmitSignal(nameof(Transited), from, to);
+        }
+
+        /// <summary>
+        /// Called internally if processMode is PHYSICS/IDLE to unlock Update()
+        /// </summary>
+        private void UpdateStart()
+        {
+            isUpdateLocked = false;
+        }
+
+        /// <summary>
+        /// Called internally if processMode is PHYSICS/IDLE to lock Update() from external call
+        /// </summary>
+        private void UpdateEnd()
+        {
+            isUpdateLocked = true;
+        }
+
+        /// <summary>
+        /// Called after Update() which is dependant on processMode, override to process current state
+        /// </summary>
+        /// <param name="delta"></param>
+        /// <param name="state"></param>
+        public virtual void OnUpdated(float delta, string state)
+        {
+
+        }
+
+        private void OnProcessModeChanged()
+        {
+            if (!active)
+                return;
+
+            switch (processMode)
+            {
+                case ProcessModeType.PHYSICS:
+                    SetPhysicsProcess(true);
+                    SetProcess(false);
+                    break;
+                case ProcessModeType.IDLE:
+                    SetPhysicsProcess(false);
+                    SetProcess(true);
+                    break;
+                case ProcessModeType.MANUAL:
+                    SetPhysicsProcess(false);
+                    SetProcess(false);
+
+                    break;
+            }
+        }
+
+        private void OnActiveChanged()
+        {
+            if (Engine.EditorHint)
+                return;
+
+            if (active)
+            {
+                OnProcessModeChanged();
+                Transit();
+            }
+            else
+            {
+                SetPhysicsProcess(false);
+                SetProcess(false);
+            }
+        }
+
+        /// <summary>
+        /// Remove all Trigger(param with null value) from provided params, only get called after _transit
+        /// Trigger another call of _flushTrigger on first layer of dictionary if nested is true
+        /// </summary>
+        /// <param name="triggerParams"></param>
+        /// <param name="nested"></param>
+        private void FlushTrigger(GDC.Dictionary triggerParams, bool nested = false)
+        {
+            foreach (string paramKey in triggerParams.Keys)
+            {
+                var value = triggerParams[paramKey];
+                if (nested && value is GDC.Dictionary nestedParams)
+                    FlushTrigger(nestedParams);
+                if (value == null) // Param with null as value is treated as trigger
+                    triggerParams.Remove(paramKey);
+            }
+        }
+
+        public override void Reset(int to = -1, ResetEventTrigger resetEventTrigger = ResetEventTrigger.LastToDest)
+        {
+            base.Reset(to, resetEventTrigger);
+            wasTransited = true; // Make sure to call _transit on next update
+        }
+
+        /// <summary>
+        /// Manually start the player, automatically called if autostart is true
+        /// </summary>
+        public void Start()
+        {
+            Push(State.EntryState);
+            EmitSignal(nameof(Entered), "");
+            wasTransited = true;
+            isStarted = true;
+
+            // Restart player
+        }
+
+        public void Restart(bool isActive = true, bool preserveParams = false)
+        {
+            Reset();
+            Active = isActive;
+            if (!preserveParams)
+            {
+                ClearParam("", false);
+            }
+            Start();
+
+            // Update player to, first initiate transition, then call _onUpdated, finally emit "update" signal, delta will be given based on processMode.
+            // Can only be called manually if processMode is MANUAL, otherwise, assertion error will be raised.
+            // *delta provided will be reflected in [Signal] delegate void Updated(state, delta);
+        }
+
+        public void Update() => Update(GetPhysicsProcessDeltaTime());
+        public void Update(float delta)
+        {
+            if (!active)
+                return;
+            if (processMode != ProcessModeType.MANUAL)
+                System.Diagnostics.Debug.Assert(!isUpdateLocked, $"Attempting to update manually with ProcessMode.{Enum.GetName(typeof(ProcessModeType), processMode)}");
+
+            Transit();
+            var currentState = Current;
+            OnUpdated(delta, currentState);
+            EmitSignal(nameof(Updated), currentState, delta);
+            if (processMode == ProcessModeType.MANUAL)
+            {
+                // Make sure to auto advance even in MANUAL mode
+                if (wasTransited)
+                {
+                    CallDeferred(nameof(Update));
+                }
+            }
+        }
+
+        /// <summary>
+        /// Set trigger to be tested with condition, then trigger _transit on next update, 
+        /// automatically call Update() if processMode set to MANUAL && autoUpdate true
+        /// Nested trigger can be accessed through path "path/to/param_name", for example, "App/Game/is_playing"
+        /// </summary>
+        /// <param name="name"></param>
+        /// <param name="autoUpdate"></param>
+        public void SetTrigger(string name, bool autoUpdate = true)
+        {
+            SetParam(name, null, autoUpdate);
+        }
+
+        public void SetNestedTrigger(string path, string name, bool autoUpdate = true)
+        {
+            SetNestedParam(path, name, null, autoUpdate);
+        }
+
+        /// <summary> 
+        /// Set Param(null value treated as trigger) to be tested with condition, then trigger _transit on next update, 
+        /// automatically call Update() if processMode set to MANUAL && autoUpdate true
+        /// Nested param can be accessed through path "path/to/param_name", for example, "App/Game/is_playing"
+        /// </summary>
+        /// <param name="name"></param>
+        /// <param name="value"></param>
+        /// <param name="autoUpdate"></param>
+        public void SetParam(string name, object value, bool autoUpdate = true)
+        {
+            string path = "";
+            if (name.Contains("/"))
+            {
+                path = PathBackward(name);
+                name = PathEndDir(name);
+            }
+            SetNestedParam(path, name, value, autoUpdate);
+
+        }
+
+        public void SetNestedParam(string path, string name, object value, bool autoUpdate = true)
+        {
+            if (path.Empty())
+                parameters[name] = value;
+            else
+            {
+                var localParams = localParameters.Get<GDC.Dictionary>(path);
+                if (localParams != null)
+                    localParams[name] = value;
+                else
+                {
+                    localParams = new GDC.Dictionary() { };
+                    localParams[name] = value;
+                    localParameters[path] = localParams;
+                }
+            }
+            OnParamEdited(autoUpdate);
+        }
+
+        /// <summary>
+        /// Remove param, then trigger _transit on next update, 
+        /// automatically call Update() if processMode set to MANUAL && autoUpdate true
+        /// Nested param can be accessed through path "path/to/param_name", for example, "App/Game/is_playing"
+        /// </summary>
+        /// <param name="name"></param>
+        /// <param name="autoUpdate"></param>
+        /// <returns></returns>
+        public bool EraseParam(string name, bool autoUpdate = true)
+        {
+            string path = "";
+            if (name.Contains("/"))
+            {
+                path = PathBackward(name);
+                name = PathEndDir(name);
+            }
+            return EraseNestedParam(path, name, autoUpdate);
+        }
+
+        public bool EraseNestedParam(string path, string name, bool autoUpdate = true)
+        {
+            bool successful = false;
+            if (path.Empty())
+            {
+                successful = parameters.Contains(name);
+                if (successful) parameters.Remove(name);
+            }
+            else
+            {
+                var nestedParams = localParameters.Get<GDC.Dictionary>(path);
+                if (nestedParams != null)
+                {
+                    successful = nestedParams.Contains(name);
+                    if (successful) nestedParams.Remove(name);
+                }
+            }
+            OnParamEdited(autoUpdate);
+            return successful;
+        }
+
+        /// <summary>
+        /// Clear params from specified path, empty string to clear all, then trigger _transit on next update, 
+        /// automatically call Update() if ProcessMode set to ProcessModeType.Manual && autoUpdate true
+        /// Nested param can be accessed through path "path/to/param_name", for example, "App/Game/is_playing"
+        /// </summary>
+        /// <param name="path"></param>
+        /// <param name="autoUpdate"></param>
+        public void ClearParam(string path = "", bool autoUpdate = true)
+        {
+            if (path.Empty())
+                parameters.Clear();
+            else
+            {
+                var nestedParams = localParameters.Get<GDC.Dictionary>(path);
+                if (nestedParams != null)
+                    nestedParams.Clear();
+
+                // Clear nested params
+                foreach (string paramKey in localParameters.Keys)
+                {
+                    if (paramKey.BeginsWith(path))
+                        localParameters.Remove(paramKey);
+                }
+            }
+        }
+
+        /// <summary>
+        /// Called when param edited, automatically call Update() if ProcessMode set to ProcessModeType.Manual && autoUpdate true
+        /// </summary>
+        /// <param name="autoUpdate"></param>
+        private void OnParamEdited(bool autoUpdate = true)
+        {
+            isParamEdited = true;
+            if (processMode == ProcessModeType.MANUAL && autoUpdate && isStarted)
+                Update();
+        }
+
+
+        /// <summary>
+        /// Get value of param
+        /// Nested param can be accessed through path "path/to/param_name", for example, "App/Game/is_playing"
+        /// </summary>
+        /// <param name="name"></param>
+        /// <param name=""></param>
+        /// <returns></returns>
+        public T GetParam<T>(string name, T defaultReturn = default(T))
+        {
+            string path = "";
+            if (name.Contains("/"))
+            {
+                path = PathBackward(name);
+                name = PathEndDir(name);
+            }
+            return GetNestedParam(path, name, defaultReturn);
+
+        }
+
+        public T GetNestedParam<T>(string path, string name, T defaultReturn = default(T))
+        {
+            if (path.Empty())
+            {
+                return parameters.Get(name, defaultReturn);
+            }
+            else
+            {
+                var nestedParams = localParameters.Get<GDC.Dictionary>(path);
+                if (nestedParams == null) return defaultReturn;
+                return nestedParams.Get(name, defaultReturn);
+
+            }
+        }
+
+        /// <summary>
+        /// Return true if param exists
+        /// Nested param can be accessed through path "path/to/param_name", for example, "App/Game/is_playing"
+        /// </summary>
+        /// <param name="name"></param>
+        /// <returns></returns>
+        public bool HasParam(string name)
+        {
+            string path = "";
+            if (name.Contains("/"))
+            {
+                path = PathBackward(name);
+                name = PathEndDir(name);
+            }
+            return HasNestedParam(path, name);
+
+        }
+
+        public bool HasNestedParam(string path, string name)
+        {
+            if (path.Empty())
+                return parameters.Contains(name);
+            else
+            {
+                var nestedParams = localParameters.Get<GDC.Dictionary>(path);
+                if (nestedParams == null)
+                    return false;
+                return nestedParams.Contains(name);
+            }
+        }
+
+        #region Static Methods
+        /// <summary>
+        /// Convert node path to state path that can be used to query state with StateMachine.get_state.
+        /// Node path, "root/path/to/state", equals to State path, "path/to/state"
+        /// </summary>
+        /// <param name="nodePath"></param>
+        /// <returns></returns>
+        public static string NodePathToStatePath(string nodePath)
+        {
+            var p = nodePath.Replace("root", "");
+            if (p.BeginsWith("/"))
+            {
+                p = p.Substring(1);
+            }
+            return p;
+
+        }
+
+        /// <summary>
+        /// Convert state path to node path that can be used for query node in scene tree.
+        /// State path, "path/to/state", equals to Node path, "root/path/to/state"
+        /// </summary>
+        /// <param name="statePath"></param>
+        /// <returns></returns>
+        public static string StatePathToNodePath(string statePath)
+        {
+            var path = statePath;
+            if (path.Empty())
+            {
+                path = "root";
+            }
+            else
+            {
+                path = GD.Str("root/", path);
+            }
+            return path;
+        }
+
+        /// <summary>
+        /// Return parent path, "path/to/state" return "path/to"
+        /// </summary>
+        /// <param name="path"></param>
+        /// <returns></returns>
+        public static string PathBackward(string path)
+        {
+            return path.Substr(0, path.FindLast("/"));
+        }
+
+        /// <summary>
+        /// Return end directory of path, "path/to/state" returns "state"
+        /// </summary>
+        /// <param name="path"></param>
+        /// <returns></returns>
+        public static string PathEndDir(string path)
+        {
+            return path.Right(path.FindLast("/") + 1);
+        }
+        #endregion
+    }
 }

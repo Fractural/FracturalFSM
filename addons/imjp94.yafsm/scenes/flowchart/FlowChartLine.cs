@@ -1,140 +1,124 @@
 
 using System;
 using Godot;
-using Dictionary = Godot.Collections.Dictionary;
-using Array = Godot.Collections.Array;
+using GDC = Godot.Collections;
+using Fractural.Utils;
+using System.Collections.Generic;
 
-[Tool]
-public class FlowChartLine : Container
+namespace GodotRollbackNetcode.StateMachine
 {
-	 
-	// Custom style normal, focus, arrow
-	
-	public __TYPE selected = false {set{SetSelected(value);}}
-	
-	
-	public void _Init()
-	{  
-		focusMode = FOCUSClick;
-		mouseFilter = MOUSEFilterIgnore;
-	
-	}
-	
-	public void _Draw()
-	{  
-		PivotAtLineStart();
-		var from = Vector2.ZERO;
-		from.y += rectSize.y / 2.0;
-		var to = rectSize;
-		to.y -= rectSize.y / 2.0;
-		var arrow = GetIcon("arrow", "FlowChartLine");
-		var tint = Color.white;
-		if(selected)
-		{
-			tint = GetStylebox("focus", "FlowChartLine").shadow_color;
-			DrawStyleBox(GetStylebox("focus", "FlowChartLine"), new Rect2(Vector2.ZERO, rectSize));
-		}
-		else
-		{
-			DrawStyleBox(GetStylebox("normal", "FlowChartLine"), new Rect2(Vector2.ZERO, rectSize));
-		
-		
-		}
-		DrawTexture(arrow, Vector2.ZERO - arrow.GetSize() / 2 + rectSize / 2, tint);
-	
-	}
-	
-	public __TYPE _GetMinimumSize()
-	{  
-		return new Vector2(0, 5);
-	
-	}
-	
-	public void PivotAtLineStart()
-	{  
-		rectPivotOffset.x = 0;
-		rectPivotOffset.y = rectSize.y / 2.0;
-	
-	}
-	
-	public void Join(__TYPE from, __TYPE to, __TYPE offset=Vector2.ZERO, Array clipRects=new Array(){})
-	{  
-		// Offset along perpendicular direction
-		var perpDir = from.DirectionTo(to).Rotated(Mathf.Deg2Rad(90.0)).Normalized();
-		from -= perpDir * offset;
-		to -= perpDir * offset;
-	
-		var dist = from.DistanceTo(to);
-		var dir = from.DirectionTo(to);
-		var center = from + dir * dist / 2;
-	
-		// Clip line with provided Rect2 array
-		Array clipped = new Array(){new Array(){from, to}};
-		var lineFrom = from;
-		var lineTo = to;
-		foreach(var clipRect in clipRects)
-		{
-			if(clipped.Size() == 0)
-			{
-				break;
-			
-			}
-			lineFrom = clipped[0][0];
-			lineTo = clipped[0][1];
-			clipped = Geometry.ClipPolylineWithPolygon2d(
-					new Array(){lineFrom, lineTo}, 
-					new Array(){clipRect.position, new Vector2(clipRect.position.x, clipRect.end.y), 
-						clipRect.end, new Vector2(clipRect.end.x, clipRect.position.y)}
-					);
-	
-		}
-		if(clipped.Size() > 0)
-		{
-			from = clipped[0][0];
-			to = clipped[0][1];
-		}
-		else // Line is totally overlapped
-		{
-			from = center;
-			to = center + dir * 0.1;
-	
-		// Extends line by 2px to minimise ugly seam	
-		}
-		from -= dir * 2.0;
-		to += dir * 2.0;
-	
-		rectSize.x = to.DistanceTo(from);
-		// rectSize.y equals to the thickness of line
-		rectPosition = from;
-		rectPosition.y -= rectSize.y / 2.0;
-		rectRotation = Mathf.Rad2Deg(Vector2.RIGHT.AngleTo(dir));
-		PivotAtLineStart();
-	
-	}
-	
-	public void SetSelected(__TYPE v)
-	{  
-		if(selected != v)
-		{
-			selected = v;
-			Update();
-	
-		}
-	}
-	
-	public __TYPE GetFromPos()
-	{  
-		return GetTransform().Xform(rectPosition);
-	
-	}
-	
-	public __TYPE GetToPos()
-	{  
-		return GetTransform().Xform(rectPosition + rectSize);
-	
-	
-	}
-	
-	
-	
+    [Tool]
+    public class FlowChartLine : Container
+    {
+        // Flowchart Custom style normal, focus, arrow
+
+        public bool selected = false;
+        public bool Selected
+        {
+            get => selected;
+            set
+            {
+                if (selected != value)
+                {
+                    selected = value;
+                    Update();
+                }
+            }
+        }
+
+        public FlowChartLine()
+        {
+            FocusMode = FocusModeEnum.Click;
+            MouseFilter = MouseFilterEnum.Ignore;
+        }
+
+        public override void _Draw()
+        {
+            PivotAtLineStart();
+            var from = Vector2.Zero;
+            from.y += RectSize.y / 2f;
+            var to = RectSize;
+            to.y -= RectSize.y / 2f;
+            var arrow = GetIcon("arrow", "FlowChartLine");
+            var tint = Colors.White;
+            if (selected)
+            {
+                tint = GetStylebox("focus", "FlowChartLine").Get<Color>("shadow_color");
+                DrawStyleBox(GetStylebox("focus", "FlowChartLine"), new Rect2(Vector2.Zero, RectSize));
+            }
+            else
+            {
+                DrawStyleBox(GetStylebox("normal", "FlowChartLine"), new Rect2(Vector2.Zero, RectSize));
+
+
+            }
+            DrawTexture(arrow, Vector2.Zero - arrow.GetSize() / 2 + RectSize / 2, tint);
+
+        }
+
+        public override Vector2 _GetMinimumSize() => new Vector2(0, 5);
+
+        public void PivotAtLineStart()
+        {
+            RectPivotOffset = new Vector2(0, RectSize.y / 2f);
+        }
+
+        public void Join(Vector2 from, Vector2 to, float offset = default, IEnumerable<Rect2> clipRects = null)
+        {
+            // Offset along perpendicular direction
+            var perpDir = from.DirectionTo(to).Rotated(Mathf.Deg2Rad(90)).Normalized();
+            from -= perpDir * offset;
+            to -= perpDir * offset;
+
+            var dist = from.DistanceTo(to);
+            var dir = from.DirectionTo(to);
+            var center = from + dir * dist / 2;
+
+            // Clip line with provided Rect2 array
+            GDC.Array clipped = new GDC.Array() { new GDC.Array() { from, to } };
+            Vector2 lineFrom = from;
+            Vector2 lineTo = to;
+            if (clipRects != null)
+                foreach (var clipRect in clipRects)
+                {
+                    if (clipped.Count == 0)
+                        break;
+
+                    lineFrom = clipped.ElementAt<Vector2>(0, 0);
+                    lineTo = clipped.ElementAt<Vector2>(0, 1);
+                    clipped = Geometry.ClipPolylineWithPolygon2d(
+                        new[] { lineFrom, lineTo },
+                        new[]{
+                            clipRect.Position,
+                            new Vector2(clipRect.Position.x, clipRect.End.y),
+                            clipRect.End,
+                            new Vector2(clipRect.End.x, clipRect.Position.y)
+                        }
+                    );
+                }
+            if (clipped.Count > 0)
+            {
+                from = clipped.ElementAt<Vector2>(0, 0);
+                to = clipped.ElementAt<Vector2>(0, 1);
+            }
+            else // Line is totally overlapped
+            {
+                from = center;
+                to = center + dir * 0.1f;
+
+                // Extends line by 2px to minimise ugly seam	
+            }
+            from -= dir * 2f;
+            to += dir * 2f;
+
+            RectSize = new Vector2(to.DistanceTo(from), RectSize.y);
+            // rectSize.y equals to the thickness of line
+            RectPosition = new Vector2(from.x, from.y - RectSize.y / 2f);
+            RectRotation = Mathf.Rad2Deg(Vector2.Right.AngleTo(dir));
+            PivotAtLineStart();
+        }
+
+        public Vector2 GetFromPos() => GetTransform() * RectPosition;
+        public Vector2 GetToPos() => GetTransform() * (RectPosition + RectSize);
+    }
 }

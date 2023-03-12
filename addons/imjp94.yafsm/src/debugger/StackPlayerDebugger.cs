@@ -3,91 +3,97 @@ using System;
 using Godot;
 using Dictionary = Godot.Collections.Dictionary;
 using Array = Godot.Collections.Array;
+using Fractural.GodotCodeGenerator.Attributes;
 
-[Tool]
-public class StackPlayerDebugger : Control
+namespace GodotRollbackNetcode.StateMachine
 {
-	 
-	public const var StackPlayer = GD.Load("../StackPlayer.gd");
-	public const var StackItem = GD.Load("StackItem.tscn");
-	
-	public onready var Stack = GetNode("MarginContainer/Stack");
-	
-	
-	public __TYPE _GetConfigurationWarning()
-	{  
-		if(!(GetParent() is StackPlayer))
-		{
-			return "Debugger must be child of StackPlayer";
-		}
-		return "";
-	
-	}
-	
-	public void _Ready()
-	{  
-		if(Engine.editor_hint)
-		{
-			return;
-	
-		}
-		GetParent().Connect("pushed", this, "_on_StackPlayer_pushed");
-		GetParent().Connect("popped", this, "_on_StackPlayer_popped");
-		SyncStack();
-	
-	// Override to handle custom object presentation
-	}
-	
-	public void _OnSetLabel(__TYPE label, __TYPE obj)
-	{  
-		label.text = obj;
-	
-	}
-	
-	public void _OnStackPlayerPushed(__TYPE to)
-	{  
-		var stackItem = StackItem.Instance();
-		_OnSetLabel(stackItem.GetNode("Label"), to);
-		Stack.AddChild(stackItem);
-		Stack.MoveChild(stackItem, 0);
-	
-	}
-	
-	public void _OnStackPlayerPopped(__TYPE from)
-	{  
-		// Sync whole stack instead of just popping top item, as ResetEventTrigger passed to Reset() may be varied
-		SyncStack();
-	
-	}
-	
-	public void SyncStack()
-	{  
-		var diff = Stack.GetChildCount() - GetParent().stack.Size();
-		foreach(var i in Mathf.Abs(diff))
-		{
-			if(diff < 0)
-			{
-				var stackItem = StackItem.Instance();
-				Stack.AddChild(stackItem);
-			}
-			else
-			{
-				var child = Stack.GetChild(0);
-				Stack.RemoveChild(child);
-				child.QueueFree();
-			}
-		}
-		var stack = GetParent().stack;
-		foreach(var i in stack.Size())
-		{
-			var obj = stack[stack.Size()-1 - i] ;// Descending order, to list from bottom to top in VBoxContainer
-			var child = Stack.GetChild(i);
-			_OnSetLabel(child.GetNode("Label"), obj);
-	
-	
-		}
-	}
-	
-	
-	
+    [Tool]
+    public partial class StackPlayerDebugger : Control
+    {
+        [Export]
+        private PackedScene stackItem;
+
+        [OnReadyGet("MarginContainer/Stack")]
+        public VBoxContainer Stack;
+        public StackPlayer ParentStackPlayer => GetParent() as StackPlayer;
+
+
+        public override string _GetConfigurationWarning()
+        {
+            if (!(GetParent() is StackPlayer))
+            {
+                return "Debugger must be child of StackPlayer";
+            }
+            return "";
+        }
+
+        [OnReady]
+        public void RealReady()
+        {
+            if (Engine.EditorHint)
+            {
+                return;
+
+            }
+            ParentStackPlayer.Connect(nameof(StackPlayer.Pushed), this, nameof(_OnStackPlayerPushed));
+            ParentStackPlayer.Connect(nameof(StackPlayer.Popped), this, nameof(_OnStackPlayerPopped));
+            SyncStack();
+
+        }
+
+        // TODO: Remove this if unused
+        // TODO: Maybe make a dedicateed script for stack items
+
+        /// <summary>
+        /// Override to handle custom object presentation
+        /// </summary>
+        /// <param name="label"></param>
+        /// <param name="obj"></param>
+        private void _OnSetLabel(Label label, string obj)
+        {
+            label.Text = obj;
+        }
+
+        private void _OnStackPlayerPushed(string to)
+        {
+            var stackItem = this.stackItem.Instance();
+            _OnSetLabel(stackItem.GetNode<Label>("Label"), to);
+            Stack.AddChild(stackItem);
+            Stack.MoveChild(stackItem, 0);
+
+        }
+
+        private void _OnStackPlayerPopped(string from)
+        {
+            // Sync whole stack instead of just popping top item, as ResetEventTrigger passed to Reset() may be varied
+            SyncStack();
+        }
+
+        public void SyncStack()
+        {
+            int diff = Stack.GetChildCount() - ParentStackPlayer.Stack.Count;
+            int diffCount = Mathf.Abs(diff);
+            for (int i = 0; i < diffCount; i++)
+            {
+                if (diff < 0)
+                {
+                    var stackItem = this.stackItem.Instance();
+                    Stack.AddChild(stackItem);
+                }
+                else
+                {
+                    var child = Stack.GetChild(0);
+                    Stack.RemoveChild(child);
+                    child.QueueFree();
+                }
+            }
+            var stack = ParentStackPlayer.Stack;
+            for (int i = 0; i < stack.Count; i++)
+            {
+                var obj = stack[stack.Count - 1 - i]; // Descending order, to list from bottom to top in VBoxContainer
+                var child = Stack.GetChild(i);
+                _OnSetLabel(child.GetNode<Label>("Label"), obj);
+            }
+        }
+    }
 }
