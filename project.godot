@@ -8,6 +8,14 @@
 
 config_version=4
 
+[FracturalCommons]
+
+Main/GenerateCSharpScriptsTable=false
+Main/GenerateVersionPreprocessorDefines=false
+"C# Resource Registry/ClassPrefix"=""
+"C# Resource Registry/SearchType"=0
+"C# Resource Registry/ResourceScriptDirectories"=[ "res://" ]
+
 [application]
 
 config/name="GodotRollbackStateMachine"
@@ -16,7 +24,7 @@ config/icon="res://icon.png"
 
 [editor_plugins]
 
-enabled=PoolStringArray( "res://addons/editor_icon_previewer/plugin.cfg", "res://addons/gd2cs.py/plugin.cfg" )
+enabled=PoolStringArray( "res://addons/FracturalCommons/plugin.cfg", "res://addons/editor_icon_previewer/plugin.cfg", "res://addons/gd2cs.py/plugin.cfg" )
 
 [gd2cs]
 
