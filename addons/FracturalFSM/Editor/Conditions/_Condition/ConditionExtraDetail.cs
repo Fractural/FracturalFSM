@@ -1,6 +1,6 @@
 ﻿using System;
 
-namespace GodotRollbackNetcode.StateMachine
+namespace Fractural.StateMachine
 {
     /// <summary>
     /// Holds extra details to append to a conditon's display string.

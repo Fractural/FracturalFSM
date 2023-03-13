@@ -2,8 +2,9 @@
 using System;
 using Godot;
 using Fractural.GodotCodeGenerator.Attributes;
+using Fractural.FlowChart;
 
-namespace GodotRollbackNetcode.StateMachine
+namespace Fractural.StateMachine
 {
     [Tool]
     public partial class StateNode : FlowChartNode

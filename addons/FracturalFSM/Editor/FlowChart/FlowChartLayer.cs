@@ -6,7 +6,7 @@ using Fractural.Utils;
 using Godot;
 using GDC = Godot.Collections;
 
-namespace GodotRollbackNetcode.StateMachine
+namespace Fractural.FlowChart
 {
     /// <summary>
     /// Lightweight representation of a connection between two nodes, by

@@ -2,8 +2,8 @@
 using System;
 using Godot;
 
-namespace GodotRollbackNetcode.StateMachine
+namespace Fractural.StateMachine
 {
-	[Tool]
-	public class IntegerCondition : ValueCondition<int> { }
+    [Tool]
+    public class IntegerCondition : ValueCondition<int> { }
 }

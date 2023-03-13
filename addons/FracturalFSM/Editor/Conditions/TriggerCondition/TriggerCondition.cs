@@ -1,6 +1,6 @@
 ﻿using Godot;
 
-namespace GodotRollbackNetcode.StateMachine
+namespace Fractural.StateMachine
 {
     [Tool]
     public class TriggerCondition : Condition { }

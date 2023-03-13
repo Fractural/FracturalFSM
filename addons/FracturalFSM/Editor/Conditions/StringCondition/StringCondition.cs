@@ -4,7 +4,7 @@ using Godot;
 using Dictionary = Godot.Collections.Dictionary;
 using Array = Godot.Collections.Array;
 
-namespace GodotRollbackNetcode.StateMachine
+namespace Fractural.StateMachine
 {
     [Tool]
     public class StringCondition : ValueCondition<string>

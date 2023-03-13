@@ -4,7 +4,7 @@ using GDC = Godot.Collections;
 using Fractural.GodotCodeGenerator.Attributes;
 using Fractural.Utils;
 
-namespace GodotRollbackNetcode.StateMachine
+namespace Fractural.StateMachine
 {
     [Tool]
     public partial class TransitionEditor : VBoxContainer

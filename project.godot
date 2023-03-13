@@ -19,12 +19,12 @@ Main/GenerateVersionPreprocessorDefines=false
 [application]
 
 config/name="GodotRollbackStateMachine"
-run/main_scene="res://addons/GodotRollbackStateMachine/StateMachineEditor.tscn"
+run/main_scene="res://addons/FracturalFSM/StateMachineEditor.tscn"
 config/icon="res://icon.png"
 
 [editor_plugins]
 
-enabled=PoolStringArray( "res://addons/FracturalCommons/plugin.cfg", "res://addons/editor_icon_previewer/plugin.cfg", "res://addons/gd2cs.py/plugin.cfg" )
+enabled=PoolStringArray( "res://addons/FracturalCommons/plugin.cfg" )
 
 [gd2cs]
 

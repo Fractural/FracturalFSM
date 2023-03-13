@@ -1,4 +1,4 @@
-﻿namespace GodotRollbackNetcode.StateMachine
+﻿namespace Fractural.FlowChart
 {
     public interface ISelectable
     {

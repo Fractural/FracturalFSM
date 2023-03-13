@@ -5,7 +5,7 @@ using System.Collections.Generic;
 using System.Linq;
 using Fractural.Utils;
 
-namespace GodotRollbackNetcode.StateMachine
+namespace Fractural.StateMachine
 {
     public class StackPlayer : Node
     {

@@ -2,7 +2,7 @@
 using System;
 using Godot;
 
-namespace GodotRollbackNetcode.StateMachine
+namespace Fractural.FlowChart
 {
     [Tool]
     public class FlowChartNode : Container, ISelectable

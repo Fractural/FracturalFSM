@@ -1,6 +1,6 @@
 ﻿using Godot;
 
-namespace GodotRollbackNetcode.StateMachine
+namespace Fractural.StateMachine
 {
     /// <summary>
     /// Has creation methods for the condition editor and conditions. Is used as part of 

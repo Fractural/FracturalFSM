@@ -2,7 +2,7 @@
 using System;
 using Godot;
 
-namespace GodotRollbackNetcode.StateMachine
+namespace Fractural.StateMachine
 {
     public class StateInspector : EditorInspectorPlugin
     {

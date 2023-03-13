@@ -2,7 +2,7 @@
 using System;
 using Godot;
 
-namespace GodotRollbackNetcode.StateMachine
+namespace Fractural.StateMachine
 {
     [Tool]
     public class Condition : Resource

@@ -4,7 +4,7 @@ using Godot;
 using GDC = Godot.Collections;
 using Fractural.Utils;
 
-namespace GodotRollbackNetcode.StateMachine
+namespace Fractural.StateMachine
 {
     [Tool]
     public class Transition : Resource, IComparable<Transition>

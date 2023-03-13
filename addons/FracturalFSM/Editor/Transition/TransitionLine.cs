@@ -5,8 +5,9 @@ using GDC = Godot.Collections;
 using Fractural.GodotCodeGenerator.Attributes;
 using System.Collections.Generic;
 using Fractural.Utils;
+using Fractural.FlowChart;
 
-namespace GodotRollbackNetcode.StateMachine
+namespace Fractural.StateMachine
 {
     [Tool]
     public partial class TransitionLine : FlowChartLine

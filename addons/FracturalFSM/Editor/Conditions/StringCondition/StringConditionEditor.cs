@@ -3,7 +3,7 @@ using System;
 using Fractural.GodotCodeGenerator.Attributes;
 using Godot;
 
-namespace GodotRollbackNetcode.StateMachine
+namespace Fractural.StateMachine
 {
     [Tool]
     public partial class StringConditionEditor : ValueConditionEditor<string>

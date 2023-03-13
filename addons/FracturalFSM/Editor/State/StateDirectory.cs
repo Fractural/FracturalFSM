@@ -4,7 +4,7 @@ using Godot;
 using System.Collections.Generic;
 using System.Linq;
 
-namespace GodotRollbackNetcode.StateMachine
+namespace Fractural.StateMachine
 {
     /// <summary>
     /// Helper class instance for traversing state machine directories (nested states).

@@ -5,7 +5,7 @@ using Fractural.Utils;
 using Godot;
 using GDC = Godot.Collections;
 
-namespace GodotRollbackNetcode.StateMachine
+namespace Fractural.StateMachine
 {
 
     [Tool]

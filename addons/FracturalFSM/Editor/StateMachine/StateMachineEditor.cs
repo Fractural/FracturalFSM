@@ -5,11 +5,12 @@ using GDC = Godot.Collections;
 using Fractural.GodotCodeGenerator.Attributes;
 using Fractural.Utils;
 using System.Collections.Generic;
+using Fractural.FlowChart;
 
-namespace GodotRollbackNetcode.StateMachine
+namespace Fractural.StateMachine
 {
     [Tool]
-    public partial class StateMachineEditor : FlowChart
+    public partial class StateMachineEditor : FlowChart.FlowChart
     {
         [Signal] public delegate void InspectorChanged(string property);// Inform plugin to refresh inspector
         [Signal] public delegate void DebugModeChanged(bool newDebugMode);
@@ -140,10 +141,10 @@ namespace GodotRollbackNetcode.StateMachine
         // We need to change methods to return StateMachineEditorLayer
         // rather than FlowChartLayer
 
-        protected new StateMachineEditorLayer currentLayer
+        public new StateMachineEditorLayer CurrentLayer
         {
-            get => base.currentLayer as StateMachineEditorLayer;
-            set => base.currentLayer = value;
+            get => base.CurrentLayer as StateMachineEditorLayer;
+            set => base.CurrentLayer = value;
         }
 
         public new StateMachineEditorLayer AddLayerTo(Control target)
@@ -182,6 +183,11 @@ namespace GodotRollbackNetcode.StateMachine
             SetProcess(false);
         }
 
+        public void Construct(UndoRedo undoRedo)
+        {
+            this.undoRedo = undoRedo;
+        }
+
         [OnReady]
         public void RealReady()
         {
@@ -191,6 +197,23 @@ namespace GodotRollbackNetcode.StateMachine
             stateNodeContextMenu.Connect("index_pressed", this, nameof(OnStateNodeContextMenuIndexPressed));
             convertToStateConfirmation.Connect("confirmed", this, nameof(OnConvertToStateConfirmationConfirmed));
             saveDialog.Connect("confirmed", this, nameof(OnSaveDialogConfirmed));
+
+            var theme = this.GetThemeFromAncestor();
+            SelectionStylebox.BgColor = theme.GetColor("box_selection_fill_color", "Editor");
+            SelectionStylebox.BorderColor = theme.GetColor("box_selection_stroke_color", "Editor");
+            zoomMinus.Icon = theme.GetIcon("ZoomLess", "EditorIcons");
+            zoomReset.Icon = theme.GetIcon("ZoomReset", "EditorIcons");
+            zoomPlus.Icon = theme.GetIcon("ZoomMore", "EditorIcons");
+            snapButton.Icon = theme.GetIcon("SnapGrid", "EditorIcons");
+            conditionVisibility.TexturePressed = theme.GetIcon("GuiVisibilityVisible", "EditorIcons");
+            conditionVisibility.TextureNormal = theme.GetIcon("GuiVisibilityHidden", "EditorIcons");
+            editorAccentColor = theme.GetColor("accent_color", "Editor");
+            transitionArrowIcon = theme.GetIcon("TransitionImmediateBig", "EditorIcons");
+
+            // CurrentLayer should be set by now, since it's automatically set in the constructor of FlowChart with Select
+            // However the layer would have been created with the old accent color, so we're going to inject
+            // the new accent color we just got from the theme into it.
+            CurrentLayer.Construct(editorAccentColor);
         }
 
         public override void _Process(float delta)
@@ -271,8 +294,8 @@ namespace GodotRollbackNetcode.StateMachine
                 }
             }
             lastStack = new List<string>(stack);
-            var globalParams = stateMachinePlayer.Parameters;
-            var localParams = stateMachinePlayer.LocalParamters;
+            var globalParams = stateMachinePlayer.GetRemote<GDC.Dictionary>(nameof(StateMachinePlayer.Parameters));
+            var localParams = stateMachinePlayer.GetRemote<GDC.Dictionary>(nameof(StateMachinePlayer.LocalParamters));
             paramPanel.UpdateParams(globalParams, localParams);
             GetFocusedLayer(currentState).DebugUpdate(currentState, globalParams, localParams);
         }
@@ -307,14 +330,14 @@ namespace GodotRollbackNetcode.StateMachine
         private void OnContextMenuIndexPressed(int index)
         {
             var newNode = stateNodePrefab.Instance<StateNode>();
-            newNode.Theme.GetStylebox("focus", "FlowChartNode").Set("border_color", editorAccentColor);
+            newNode.Theme.GetStylebox<StyleBoxFlat>("focus", "FlowChartNode").BorderColor = editorAccentColor;
             switch (index)
             {
                 case 0: // Add State
                     newNode.Name = "State";
                     break;
                 case 1: // Add Entry
-                    if (currentLayer.StateMachine.States.Contains(State.EntryState))
+                    if (CurrentLayer.StateMachine.States.Contains(State.EntryState))
                     {
                         GD.PushWarning("Entry node already exist");
                         return;
@@ -322,7 +345,7 @@ namespace GodotRollbackNetcode.StateMachine
                     newNode.Name = State.EntryState;
                     break;
                 case 2: // Add Exit
-                    if (currentLayer.StateMachine.States.Contains(State.ExitState))
+                    if (CurrentLayer.StateMachine.States.Contains(State.ExitState))
                     {
                         GD.PushWarning("Exit node already exist");
                         return;
@@ -331,7 +354,7 @@ namespace GodotRollbackNetcode.StateMachine
                     break;
             }
             newNode.RectPosition = ContentPosition(GetLocalMousePosition());
-            AddNode(currentLayer, newNode);
+            AddNode(CurrentLayer, newNode);
         }
 
         private void OnStateNodeContextMenuIndexPressed(int index)
@@ -346,7 +369,7 @@ namespace GodotRollbackNetcode.StateMachine
                     contextNode = null;
                     break;
                 case 1: // Duplicate
-                    DuplicateNodes(currentLayer, new GDC.Array<Control>() { contextNode });
+                    DuplicateNodes(CurrentLayer, new GDC.Array<Control>() { contextNode });
                     contextNode = null;
                     break;
                 case 2: // Separator
@@ -360,7 +383,7 @@ namespace GodotRollbackNetcode.StateMachine
 
         private void OnConvertToStateConfirmationConfirmed()
         {
-            ConvertToState(currentLayer, contextNode);
+            ConvertToState(CurrentLayer, contextNode);
             contextNode.Update(); // Update display of node
 
             // Remove layer
@@ -389,7 +412,7 @@ namespace GodotRollbackNetcode.StateMachine
 
         private void OnConditionVisibilityPressed()
         {
-            foreach (TransitionLine line in currentLayer.ContentLines.GetChildren())
+            foreach (TransitionLine line in CurrentLayer.ContentLines.GetChildren())
                 line.ConditionVisibility = conditionVisibility.Pressed;
         }
 
@@ -475,8 +498,8 @@ namespace GodotRollbackNetcode.StateMachine
                     case (int)ButtonList.Right:
                         if (mouseButtonEvent.Pressed && CanGuiContextMenu)
                         {
-                            contextMenu.SetItemDisabled(1, currentLayer.StateMachine.HasEntry);
-                            contextMenu.SetItemDisabled(2, currentLayer.StateMachine.HasExit);
+                            contextMenu.SetItemDisabled(1, CurrentLayer.StateMachine.HasEntry);
+                            contextMenu.SetItemDisabled(2, CurrentLayer.StateMachine.HasExit);
                             contextMenu.RectPosition = GetViewport().GetMousePosition();
                             contextMenu.Popup_();
                         }
@@ -503,7 +526,7 @@ namespace GodotRollbackNetcode.StateMachine
         public StateMachineEditorLayer CreateLayer(StateNode node)
         {
             // Create/Move to new layer
-            var newStateMachine = ConvertToStateMachine(currentLayer, node);
+            var newStateMachine = ConvertToStateMachine(CurrentLayer, node);
             // Determine current layer path
             var parentPath = pathViewer.GetCwd();
             var path = GD.Str(parentPath, "/", node.Name);
@@ -667,7 +690,7 @@ namespace GodotRollbackNetcode.StateMachine
         public override FlowChartLine CreateLineInstance()
         {
             var line = transitionLinePrefab.Instance<TransitionLine>();
-            line.Theme.GetStylebox("focus", "FlowChartLine").Set("shadow_color", editorAccentColor);
+            line.Theme.GetStylebox<StyleBoxFlat>("focus", "FlowChartLine").ShadowColor = editorAccentColor;
             line.Theme.SetIcon("arrow", "FlowChartLine", transitionArrowIcon);
             return line;
         }
@@ -726,7 +749,7 @@ namespace GodotRollbackNetcode.StateMachine
             {
                 var state = stateLayer.StateMachine.States.Get<State>(stateKey);
                 var newNode = stateNodePrefab.Instance<StateNode>();
-                newNode.Theme.GetStylebox("focus", "FlowChartNode").Set("border_color", editorAccentColor);
+                newNode.Theme.GetStylebox<StyleBoxFlat>("focus", "FlowChartNode").BorderColor = editorAccentColor;
                 newNode.Name = stateKey; // Set before addNode to let engine handle duplicate name
                 AddNode(stateLayer, newNode);
                 // Set after addNode to make sure UIs are initialized
@@ -801,10 +824,10 @@ namespace GodotRollbackNetcode.StateMachine
         /// </summary>
         public void CheckHasEntry()
         {
-            if (currentLayer.StateMachine == null)
+            if (CurrentLayer.StateMachine == null)
                 return;
 
-            if (currentLayer.StateMachine.HasEntry)
+            if (CurrentLayer.StateMachine.HasEntry)
             {
                 // Has entry so remove any entry missing messages
                 if (HasMessage(EntryStateMissingMsg))
@@ -823,12 +846,12 @@ namespace GodotRollbackNetcode.StateMachine
         /// </summary>
         public void CheckHasExit()
         {
-            if (currentLayer.StateMachine == null)
+            if (CurrentLayer.StateMachine == null)
                 return;
 
             if (pathViewer.GetCwd() != "root") // Nested state
             {
-                if (!currentLayer.StateMachine.HasExit && !HasMessage(ExitStateMissingMsg))
+                if (!CurrentLayer.StateMachine.HasExit && !HasMessage(ExitStateMissingMsg))
                     AddMessage(ExitStateMissingMsg);
 
             }
@@ -1022,9 +1045,9 @@ namespace GodotRollbackNetcode.StateMachine
                 return;
             }
 
-            if (currentLayer.StateMachine.ChangeStateName(old, newName))
+            if (CurrentLayer.StateMachine.ChangeStateName(old, newName))
             {
-                RenameNode(currentLayer, node.Name, newName);
+                RenameNode(CurrentLayer, node.Name, newName);
                 node.Name = newName;
                 // Rename layer as well
                 var path = GD.Str(pathViewer.GetCwd(), "/", node.Name);

@@ -5,7 +5,7 @@ using GDC = Godot.Collections;
 using Fractural.Utils;
 using System.Collections.Generic;
 
-namespace GodotRollbackNetcode.StateMachine
+namespace Fractural.FlowChart
 {
     [Tool]
     public class FlowChartLine : Container, ISelectable
@@ -43,7 +43,7 @@ namespace GodotRollbackNetcode.StateMachine
             var tint = Colors.White;
             if (selected)
             {
-                tint = GetStylebox("focus", "FlowChartLine").Get<Color>("shadow_color");
+                tint = this.GetStylebox<StyleBoxFlat>("focus", "FlowChartLine").ShadowColor;
                 DrawStyleBox(GetStylebox("focus", "FlowChartLine"), new Rect2(Vector2.Zero, RectSize));
             }
             else

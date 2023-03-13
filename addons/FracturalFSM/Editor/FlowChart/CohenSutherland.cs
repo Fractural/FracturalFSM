@@ -1,6 +1,6 @@
 ﻿using Godot;
 
-namespace GodotRollbackNetcode.StateMachine
+namespace Fractural.FlowChart
 {
     public static class CohenSutherland
     {

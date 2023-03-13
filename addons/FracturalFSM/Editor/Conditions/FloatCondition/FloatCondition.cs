@@ -4,11 +4,11 @@ using Godot;
 using Dictionary = Godot.Collections.Dictionary;
 using Array = Godot.Collections.Array;
 
-namespace GodotRollbackNetcode.StateMachine
+namespace Fractural.StateMachine
 {
-	[Tool]
-	public class FloatCondition : ValueCondition<float>
-	{
-		public override string GetValueString() => Mathf.Stepify(TypedValue, 0.01f).ToString().PadDecimals(2);
-	}
+    [Tool]
+    public class FloatCondition : ValueCondition<float>
+    {
+        public override string GetValueString() => Mathf.Stepify(TypedValue, 0.01f).ToString().PadDecimals(2);
+    }
 }

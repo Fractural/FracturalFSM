@@ -3,7 +3,7 @@ using System;
 using Godot;
 using Fractural.Utils;
 
-namespace GodotRollbackNetcode.StateMachine
+namespace Fractural.StateMachine
 {
     [Tool]
     public class TransitionInspector : EditorInspectorPlugin

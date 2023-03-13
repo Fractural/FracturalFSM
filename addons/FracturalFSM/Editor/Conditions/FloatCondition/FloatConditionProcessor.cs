@@ -1,4 +1,4 @@
-namespace GodotRollbackNetcode.StateMachine
+namespace Fractural.StateMachine
 {
     public class FloatConditionProcessor : ConditionProcessor<BoolCondition>
     {

@@ -6,8 +6,9 @@ using Fractural.Utils;
 using System.Linq;
 using System.Collections;
 using System.Collections.Generic;
+using Fractural.FlowChart;
 
-namespace GodotRollbackNetcode.StateMachine
+namespace Fractural.StateMachine
 {
     [Tool]
     public class StateMachine : State

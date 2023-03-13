@@ -3,8 +3,9 @@ using System;
 using Godot;
 using GDC = Godot.Collections;
 using Fractural.Utils;
+using Fractural.FlowChart;
 
-namespace GodotRollbackNetcode.StateMachine
+namespace Fractural.StateMachine
 {
     /// <summary>
     /// Currently only provides debugging visualizatinon for state machine layers.
