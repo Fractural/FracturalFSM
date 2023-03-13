@@ -9,9 +9,9 @@ public class PathViewer : HBoxContainer
 {
     [Signal] public delegate void DirPressed(string dir, int index);
 
-    public void _Init()
+    public PathViewer()
     {
-        AddDirButton("root");
+        AddDir("root");
     }
 
     /// <summary>
@@ -47,7 +47,7 @@ public class PathViewer : HBoxContainer
     /// </summary>
     /// <param name="dir"></param>
     /// <returns></returns>
-    public Button AddDirButton(string dir)
+    public Button AddDir(string dir)
     {
         var button = new Button();
 

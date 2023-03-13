@@ -22,21 +22,49 @@ namespace GodotRollbackNetcode.StateMachine
         [Export]
         public GDC.Dictionary States { get => states.Duplicate(); set => states = value; }
         private GDC.Dictionary states = new GDC.Dictionary();
-        public StateMachine GetStateMachine(string state) => GetState(state) as StateMachine;
 
         /// <summary>
         /// Transitions from this state, keyed by Transition.To
         /// [State.Name] = [Transition.To] = Transition
         /// </summary>
         [Export]
-        public GDC.Dictionary Transitions { get => transitions.Duplicate(); set => transitions = value; }
         private GDC.Dictionary transitions = new GDC.Dictionary();
 
-        public void _Init(string name = "", GDC.Dictionary transitions = null, GDC.Dictionary states = null)
+        #region Transitions Accessors
+        public Transition GetTransition(ConnectionPair pair)
         {
-            base._Init(name);
+            return transitions.Get<Transition>($"{pair.From}.{pair.To}");
+        }
+
+        public Transition GetTransition(string fromNode, string toNode)
+        {
+            return transitions.Get<Transition>($"{fromNode}.{toNode}");
+        }
+
+        public IList<Transition> GetNodeTransitions(string fromNode)
+        {
+            var transitionsDict = GetNodeTransitionsDict(fromNode);
+            return new List<Transition>(transitionsDict.Values.Cast<Transition>());
+        }
+
+        public GDC.Dictionary GetNodeTransitionsDict(string fromNode)
+        {
+            return transitions.Get<GDC.Dictionary>(fromNode);
+        }
+
+        public GDC.Dictionary GetNodeTransitionsDictOrNew(string fromNode)
+        {
+            var result = transitions.Get<GDC.Dictionary>(fromNode);
+            if (result == null)
+                return new GDC.Dictionary();
+            return result;
+        }
+        #endregion
+
+        public StateMachine(string name = "", GDC.Dictionary transitions = null, GDC.Dictionary states = null) : base(name)
+        {
             if (transitions != null)
-                Transitions = transitions;
+                this.transitions = transitions;
             if (states != null)
                 States = states;
         }
@@ -63,13 +91,9 @@ namespace GodotRollbackNetcode.StateMachine
                 // Construct absolute base path
                 basePath = JoinPath(basePath, state);
                 if (endStateMachine != this)
-                {
                     endStateMachine = endStateMachine.States.Get<StateMachine>(state);
-                }
                 else
-                {
                     endStateMachine = States.Get<StateMachine>(state); // First level state
-                }
             }
             // Nested StateMachine in Exit state
             if (isNested)
@@ -79,24 +103,22 @@ namespace GodotRollbackNetcode.StateMachine
                 {
                     // Normalize path to transit again with parent of endStateMachine
                     string endStateMachineParentPath = "";
-                    for (int i = 0; i < nestedStates.Length - 2; i++) // Ignore last two State(which is endStateMachine/end_state)
-                    {
+                    for (int i = 0; i < nestedStates.Length - 2; i++) // Ignore last two State(which is endStateMachine/end_state
                         endStateMachineParentPath = JoinPath(endStateMachineParentPath, nestedStates[i]);
-                    }
+
                     var endStateMachineParent = GetState(endStateMachineParentPath) as StateMachine;
                     var normalizedCurrentState = endStateMachine.Name;
                     var nextState = endStateMachineParent.Transit(normalizedCurrentState, transitParams);
                     if (nextState != null)
-                    {
                         // Construct next state into absolute path
                         nextState = JoinPath(endStateMachineParentPath, nextState);
-                    }
+
                     return nextState;
 
                 }
             }
             // Transit with current running nested state machine
-            var fromTransitions = endStateMachine.Transitions.Get<GDC.Dictionary>(nestedStates[nestedStates.Length - 1]);
+            var fromTransitions = endStateMachine.transitions.Get<GDC.Dictionary>(nestedStates[nestedStates.Length - 1]);
             if (fromTransitions != null)
             {
                 var fromTransitionsArray = fromTransitions.Values.Cast<Transition>().ToList();
@@ -108,16 +130,12 @@ namespace GodotRollbackNetcode.StateMachine
                     if (nextState != null)
                     {
                         if (endStateMachine.States.Get<State>(nextState) is StateMachine)
-                        {
                             // Next state is a StateMachine, return entry state of the state machine in absolute path
                             nextState = JoinPath(basePath, nextState, State.EntryState);
-                        }
-
                         else
-                        {
                             // Construct next state into absolute path
                             nextState = JoinPath(basePath, nextState);
-                        }
+
                         return nextState;
                     }
                 }
@@ -165,13 +183,13 @@ namespace GodotRollbackNetcode.StateMachine
         /// <summary>
         /// Remove state by its name
         /// </summary>
-        /// <param name="state"></param>
+        /// <param name="stateName"></param>
         /// <returns></returns>
-        public bool RemoveState(State state)
+        public bool RemoveState(string stateName)
         {
-            if (States.Contains(state.Name))
+            if (States.Contains(stateName))
             {
-                States.Remove(state);
+                States.Remove(stateName);
                 return true;
             }
             return false;
@@ -198,13 +216,13 @@ namespace GodotRollbackNetcode.StateMachine
                     States[to] = state;
                     States.Remove(from);
                 }
-                foreach (string fromKey in Transitions.Keys)
+                foreach (string fromKey in transitions.Keys)
                 {
-                    var fromTransitions = Transitions.Get<GDC.Dictionary>(fromKey);
+                    var fromTransitions = transitions.Get<GDC.Dictionary>(fromKey);
                     if (fromKey == from)
                     {
-                        Transitions.Remove(from);
-                        Transitions[to] = fromTransitions;
+                        transitions.Remove(from);
+                        transitions[to] = fromTransitions;
                     }
                     foreach (string toKey in fromTransitions.Keys)
                     {
@@ -241,12 +259,12 @@ namespace GodotRollbackNetcode.StateMachine
                 return;
             }
             GDC.Dictionary fromTransitions;
-            if (Transitions.Contains(transition.From))
-                fromTransitions = Transitions.Get<GDC.Dictionary>(transition.From);
+            if (transitions.Contains(transition.From))
+                fromTransitions = transitions.Get<GDC.Dictionary>(transition.From);
             else
             {
                 fromTransitions = new GDC.Dictionary() { };
-                Transitions[transition.From] = fromTransitions;
+                transitions[transition.From] = fromTransitions;
             }
             fromTransitions[transition.To] = transition;
             EmitSignal(nameof(TransitionAdded), transition);
@@ -259,26 +277,26 @@ namespace GodotRollbackNetcode.StateMachine
         /// <param name="toState"></param>
         public void RemoveTransition(string fromState, string toState)
         {
-            var fromTransitions = Transitions.Get<GDC.Dictionary>(fromState);
+            var fromTransitions = transitions.Get<GDC.Dictionary>(fromState);
             if (fromTransitions != null && fromTransitions.Contains(toState))
             {
                 fromTransitions.Remove(toState);
                 if (fromTransitions.Count == 0)
                     // There are no transitions going out from "fromState", so we remove
                     // it's entry from the Transitions' dict.
-                    Transitions.Remove(fromState);
+                    transitions.Remove(fromState);
                 EmitSignal(nameof(TransitionRemoved), fromState, toState);
             }
         }
 
         public IEnumerable<State> GetEntries()
         {
-            return Transitions.Get<GDC.Dictionary>(EntryState).Values.Cast<State>();
+            return transitions.Get<GDC.Dictionary>(EntryState).Values.Cast<State>();
         }
 
         public IEnumerable<State> GetExits()
         {
-            return Transitions.Get<GDC.Dictionary>(ExitState).Values.Cast<State>();
+            return transitions.Get<GDC.Dictionary>(ExitState).Values.Cast<State>();
         }
 
         public bool HasEntry => States.Contains(EntryState);
@@ -342,8 +360,6 @@ namespace GodotRollbackNetcode.StateMachine
                 }
             }
             return validated;
-
-
         }
     }
 }

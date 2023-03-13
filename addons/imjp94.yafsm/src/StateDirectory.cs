@@ -6,14 +6,16 @@ using System.Linq;
 
 namespace GodotRollbackNetcode.StateMachine
 {
-    [Tool]
-    public class StateDirectory
+    /// <summary>
+    /// Helper class instance for traversing state machine directories (nested states).
+    /// </summary>
+    public struct StateDirectory
     {
-        public string path;
+        public string Path { get; set; }
         /// <summary>
         /// Get current full path
         /// </summary>
-        public string current => string.Join(",", new ArraySegment<string>(dirs, BaseIndex, BaseIndex - currentIndex + 1));
+        public string Current => string.Join(",", new ArraySegment<string>(dirs, BaseIndex, BaseIndex - currentIndex + 1));
         /// <summary>
         /// Get base state name
         /// </summary>
@@ -23,21 +25,22 @@ namespace GodotRollbackNetcode.StateMachine
         /// </summary>
         public string End => dirs[EndIndex];
 
-        private string[] dirs = new string[] { "" };// Empty string equals to root
+        private string[] dirs; // Empty string equals to root
         /// <summary>
         /// Get arrays of directories
         /// </summary>
         /// <returns></returns>
         public string[] Dirs => dirs.Clone() as string[];
 
-        private int currentIndex = 0;
+        private int currentIndex;
 
         public StateDirectory(string p)
         {
-            path = p;
+            Path = p;
             List<string> dirsList = new List<string>() { "" };  // Empty string represents root
             dirsList.AddRange(p.Split("/"));
             dirs = dirsList.ToArray();
+            currentIndex = 0;
         }
 
         /// <summary>
@@ -65,7 +68,6 @@ namespace GodotRollbackNetcode.StateMachine
             {
                 currentIndex -= 1;
                 return CurrentEnd;
-
             }
             return null;
         }
@@ -99,7 +101,7 @@ namespace GodotRollbackNetcode.StateMachine
         {
             get
             {
-                var currentPath = current;
+                var currentPath = Current;
                 return currentPath.Right(currentPath.FindLast("/") + 1);
             }
         }
@@ -125,10 +127,8 @@ namespace GodotRollbackNetcode.StateMachine
         public bool IsExit => End == State.ExitState;
 
         /// <summary>
-        /// Check if it is nested. ("Base" is !nested, "Base/NextState" is nested)
+        /// Check if it is nested. ("Base" is not nested, "Base/NextState" is nested)
         /// </summary>
         public bool IsNested => dirs.Length > 2; // Root(empty string) & base taken 2 place
-
     }
-
 }

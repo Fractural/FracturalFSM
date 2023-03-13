@@ -11,8 +11,7 @@ namespace GodotRollbackNetcode.StateMachine
         [Signal] public delegate void NameEditEntered(string newName); // Emits when focused exit || Enter pressed
 
         [OnReadyGet("MarginContainer/NameEdit")]
-        private LineEdit nameEdit;
-        private UndoRedo undoRedo;
+        public LineEdit NameEdit { get; set; }
 
         private State state;
         public State State
@@ -28,6 +27,8 @@ namespace GodotRollbackNetcode.StateMachine
             }
         }
 
+        private UndoRedo undoRedo;
+
         public void Construct(UndoRedo undoRedo)
         {
             State = new State("State");
@@ -37,10 +38,10 @@ namespace GodotRollbackNetcode.StateMachine
         [OnReady]
         public void RealReady()
         {
-            nameEdit.Text = "State";
-            nameEdit.Connect("focus_exited", this, nameof(OnNameEditFocusExited));
-            nameEdit.Connect("text_entered", this, nameof(OnNameEditTextEntered));
-            SetProcessInput(false);// _Input only required when nameEdit enabled to check mouse click outside
+            NameEdit.Text = "State";
+            NameEdit.Connect("focus_exited", this, nameof(OnNameEditFocusExited));
+            NameEdit.Connect("text_entered", this, nameof(OnNameEditTextEntered));
+            SetProcessInput(false);// _Input only required when NameEdit enabled to check mouse click outside
         }
 
         public override void _Draw()
@@ -58,7 +59,7 @@ namespace GodotRollbackNetcode.StateMachine
 
         public override void _Input(InputEvent inputEvent)
         {
-            nameEdit.TryReleaseFocusWithMouseClick(inputEvent);
+            NameEdit.TryReleaseFocusWithMouseClick(inputEvent);
         }
 
         public void EnableNameEdit(bool enabled)
@@ -66,27 +67,27 @@ namespace GodotRollbackNetcode.StateMachine
             if (enabled)
             {
                 SetProcessInput(true);
-                nameEdit.Editable = true;
-                nameEdit.SelectingEnabled = true;
-                nameEdit.MouseFilter = MouseFilterEnum.Pass;
+                NameEdit.Editable = true;
+                NameEdit.SelectingEnabled = true;
+                NameEdit.MouseFilter = MouseFilterEnum.Pass;
                 MouseDefaultCursorShape = CursorShape.Ibeam;
-                nameEdit.GrabFocus();
+                NameEdit.GrabFocus();
             }
             else
             {
                 SetProcessInput(false);
-                nameEdit.Editable = false;
-                nameEdit.SelectingEnabled = false;
-                nameEdit.MouseFilter = MouseFilterEnum.Ignore;
+                NameEdit.Editable = false;
+                NameEdit.SelectingEnabled = false;
+                NameEdit.MouseFilter = MouseFilterEnum.Ignore;
                 MouseDefaultCursorShape = CursorShape.Arrow;
-                nameEdit.ReleaseFocus();
+                NameEdit.ReleaseFocus();
 
             }
         }
 
         private void OnStateNameChanged(string newName)
         {
-            nameEdit.Text = newName;
+            NameEdit.Text = newName;
             RectSize = new Vector2(0, RectSize.y); // Force reset horizontal size
         }
 
@@ -95,16 +96,16 @@ namespace GodotRollbackNetcode.StateMachine
             if (state != null)
             {
                 state.Connect(nameof(State.NameChanged), this, nameof(OnStateNameChanged));
-                if (nameEdit != null)
-                    nameEdit.Text = state.Name;
+                if (NameEdit != null)
+                    NameEdit.Text = state.Name;
             }
         }
 
         private void OnNameEditFocusExited()
         {
             EnableNameEdit(false);
-            nameEdit.Deselect();
-            EmitSignal(nameof(NameEditEntered), nameEdit.Text);
+            NameEdit.Deselect();
+            EmitSignal(nameof(NameEditEntered), NameEdit.Text);
 
         }
 
@@ -112,7 +113,6 @@ namespace GodotRollbackNetcode.StateMachine
         {
             EnableNameEdit(false);
             EmitSignal(nameof(NameEditEntered), newText);
-
         }
     }
 }

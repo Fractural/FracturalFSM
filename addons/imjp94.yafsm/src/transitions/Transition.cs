@@ -1,8 +1,7 @@
 
 using System;
 using Godot;
-using Dictionary = Godot.Collections.Dictionary;
-using Array = Godot.Collections.Array;
+using GDC = Godot.Collections;
 using Fractural.Utils;
 
 namespace GodotRollbackNetcode.StateMachine
@@ -24,7 +23,7 @@ namespace GodotRollbackNetcode.StateMachine
         /// <summary>
         /// Conditions to transit successfuly, keyed by Condition.name
         /// </summary>
-        [Export] public Dictionary Conditions { get; private set; }
+        [Export] public GDC.Dictionary Conditions { get; private set; }
         /// <summary>
         /// Higher the number, higher the priority
         /// </summary>
@@ -32,7 +31,7 @@ namespace GodotRollbackNetcode.StateMachine
 
         // TODO: Replace Godot Dictionaries with C# Generic Dictionaries
 
-        public Transition(string from = "", string to = "", Dictionary conditions = null)
+        public Transition(string from = "", string to = "", GDC.Dictionary conditions = null)
         {
             From = from;
             To = to;
@@ -45,10 +44,10 @@ namespace GodotRollbackNetcode.StateMachine
         /// <param name="transitParams"></param>
         /// <param name="localParams"></param>
         /// <returns></returns>
-        public string Transit(Dictionary transitParams = null, Dictionary localParams = null)
+        public string Transit(GDC.Dictionary transitParams = null, GDC.Dictionary localParams = null)
         {
-            if (transitParams == null) transitParams = new Dictionary();
-            if (localParams == null) localParams = new Dictionary();
+            if (transitParams == null) transitParams = new GDC.Dictionary();
+            if (localParams == null) localParams = new GDC.Dictionary();
 
             if (Conditions.Count > 0)
             {
@@ -99,7 +98,7 @@ namespace GodotRollbackNetcode.StateMachine
             if (condition != null)
             {
                 Conditions.Remove(name);
-                EmitSignal("condition_removed", condition);
+                EmitSignal(nameof(ConditionRemoved), condition);
                 return true;
             }
             return false;

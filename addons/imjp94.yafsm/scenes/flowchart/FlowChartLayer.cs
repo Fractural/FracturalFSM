@@ -1,12 +1,17 @@
 
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using Fractural.Utils;
 using Godot;
 using GDC = Godot.Collections;
 
 namespace GodotRollbackNetcode.StateMachine
 {
+    /// <summary>
+    /// Lightweight representation of a connection between two nodes, by
+    /// storing the name of each node.
+    /// </summary>
     public struct ConnectionPair
     {
         public ConnectionPair(string from, string to)
@@ -19,6 +24,9 @@ namespace GodotRollbackNetcode.StateMachine
         public string To { get; set; }
     }
 
+    /// <summary>
+    /// Holds data about a connection between two nodes, as well as the line that visualizes it.
+    /// </summary>
     public class Connection
     {
         /// <summary>
@@ -45,7 +53,7 @@ namespace GodotRollbackNetcode.StateMachine
         /// </summary>
         public void Join()
         {
-            Line.Join(GetFromPos(), GetToPos(), Offset, new Rect2[] {
+            Line.Join(GetFromPos(), GetToPos(), new Vector2(0, Offset), new Rect2[] {
                 FromNode != null ? FromNode.GetRect() : new Rect2(),
                 ToNode != null ? ToNode.GetRect() : new Rect2()
             });
@@ -70,8 +78,31 @@ namespace GodotRollbackNetcode.StateMachine
         public Control ContentLines { get; private set; } = new Control(); // Node that hold all flowchart lines
         public Control ContentNodes { get; private set; } = new Control(); // Node that hold all flowchart nodes
 
-        // [FlowChartNode.name] = [Connection.to] = Connection.from
+        // [FlowChartNode.name] = [Connection.to] = Connection
         public GDC.Dictionary Connections { get; private set; } = new GDC.Dictionary() { };
+
+        #region Connections Accessors
+        public Connection GetConnection(ConnectionPair pair)
+        {
+            return Connections.Get<Connection>($"{pair.From}.{pair.To}");
+        }
+
+        public Connection GetConnection(string fromNode, string toNode)
+        {
+            return Connections.Get<Connection>($"{fromNode}.{toNode}");
+        }
+
+        public IList<Connection> GetNodeConnections(string fromNode)
+        {
+            var connectionsDict = GetNodeConnectionsDict(fromNode);
+            return new List<Connection>(connectionsDict.Values.Cast<Connection>());
+        }
+
+        public GDC.Dictionary GetNodeConnectionsDict(string fromNode)
+        {
+            return Connections.Get<GDC.Dictionary>(fromNode);
+        }
+        #endregion
 
         public FlowChartLayer()
         {
@@ -127,6 +158,8 @@ namespace GodotRollbackNetcode.StateMachine
                 ContentNodes.RemoveChild(node);
         }
 
+        // TODO: Find a way to refactor out the call to AfterConnectNode
+        //       from FlowChart since this method seems like it should be private.
         /// <summary>
         /// Called after connection established
         /// </summary>

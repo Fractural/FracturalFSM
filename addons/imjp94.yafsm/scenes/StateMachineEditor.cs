@@ -1,9 +1,10 @@
 
 using System;
 using Godot;
-using Dictionary = Godot.Collections.Dictionary;
-using Array = Godot.Collections.Array;
+using GDC = Godot.Collections;
 using Fractural.GodotCodeGenerator.Attributes;
+using Fractural.Utils;
+using System.Collections.Generic;
 
 namespace GodotRollbackNetcode.StateMachine
 {
@@ -13,27 +14,47 @@ namespace GodotRollbackNetcode.StateMachine
         [Signal] public delegate void InspectorChanged(string property);// Inform plugin to refresh inspector
         [Signal] public delegate void DebugModeChanged(bool newDebugMode);
 
-        public static readonly Dictionary ENTRYStateMissingMsg = new Dictionary()
+        #region MessageBox
+        public class MessageBoxMessage
         {
-            ["key"] = "entry_state_missing",
-            ["text"] = "Entry State missing}, it will never get started. Right-click -> \"Add Entry\"."
-        };
-        public static readonly Dictionary EXITStateMissingMsg = new Dictionary()
-        {
-            ["key"] = "exit_state_missing",
-            ["text"] = "Exit State missing}, it will never exit from nested state. Right-click -> \"Add Exit\"."
-        };
-        public static readonly Dictionary DEBUGModeMsg = new Dictionary()
-        {
-            ["key"] = "debug_mode",
-            ["text"] = "Debug Mode"
-        };
+            public MessageBoxMessage(string key, string text)
+            {
+                Key = key;
+                Text = text;
+            }
 
+            public string Key { get; set; }
+            public string Text { get; set; }
+        }
+
+        // TODO: Refactor the messaging system to be better
+        public static readonly MessageBoxMessage EntryStateMissingMsg = new MessageBoxMessage(
+            "entry_state_missing",
+            "Entry State missing, it will never get started. Right-click -> \"Add Entry\"."
+            );
+        public static readonly MessageBoxMessage ExitStateMissingMsg = new MessageBoxMessage(
+            "exit_state_missing",
+            "Exit State missing, it will never exit from nested state. Right-click -> \"Add Exit\"."
+            );
+        public static readonly MessageBoxMessage DebugModeMsg = new MessageBoxMessage(
+            "debug_mode",
+            "Debug Mode"
+            );
+
+        private GDC.Dictionary messageBoxDict = new GDC.Dictionary() { };
+        #endregion
+
+        #region Dependencies
         [Export]
         private PackedScene stateNodePrefab;
         [Export]
         private PackedScene transitionLinePrefab;
+        [Export]
+        private PackedScene stateMachineEditorLayerPrefab;
 
+        /// <summary>
+        /// Context menu for creating new nodes
+        /// </summary>
         [OnReadyGet("ContextMenu")]
         private PopupMenu contextMenu;
         [OnReadyGet("StateNodeContextMenu")]
@@ -47,7 +68,7 @@ namespace GodotRollbackNetcode.StateMachine
         [OnReadyGet("MarginContainer/CreateNewStateMachine")]
         private Button createNewStateMachine;
         [OnReadyGet("ParametersPanel")]
-        private MarginContainer paramPanel;
+        private ParametersPanel paramPanel;
 
         private PathViewer pathViewer;
         private TextureButton conditionVisibility = new TextureButton();
@@ -58,7 +79,9 @@ namespace GodotRollbackNetcode.StateMachine
         private Texture transitionArrowIcon;
 
         private UndoRedo undoRedo;
+        #endregion
 
+        #region Public properties
         private bool debugMode = false;
         public bool DebugMode
         {
@@ -68,14 +91,14 @@ namespace GodotRollbackNetcode.StateMachine
                 if (debugMode != value)
                 {
                     debugMode = value;
-                    _OnDebugModeChanged(value);
-                    EmitSignal("debug_mode_changed", debugMode);
+                    OnDebugModeChanged(value);
+                    EmitSignal(nameof(DebugModeChanged), debugMode);
 
                 }
             }
         }
         private StateMachinePlayer stateMachinePlayer;
-        private StateMachinePlayer StateMachinePlayer
+        public StateMachinePlayer StateMachinePlayer
         {
             get => stateMachinePlayer;
             set
@@ -83,12 +106,12 @@ namespace GodotRollbackNetcode.StateMachine
                 if (stateMachinePlayer != value)
                 {
                     stateMachinePlayer = value;
-                    _OnStateMachinePlayerChanged(value);
+                    OnStateMachinePlayerChanged(value);
                 }
             }
         }
         private StateMachine stateMachine;
-        private StateMachine StateMachine
+        public StateMachine StateMachine
         {
             get => stateMachine;
             set
@@ -96,95 +119,113 @@ namespace GodotRollbackNetcode.StateMachine
                 if (stateMachine != value)
                 {
                     stateMachine = value;
-                    _OnStateMachineChanged(value);
+                    OnStateMachineChanged(value);
                 }
             }
         }
-        public bool canGuiNameEdit = true;
-        public bool canGuiContextMenu = true;
+        public bool CanGuiNameEdit { get; set; } = true;
+        public bool CanGuiContextMenu { get; set; } = true;
+        #endregion
 
-        private __TYPE _reconnectingConnection;
-        private int _lastIndex = 0;
-        private string _lastPath = "";
-        private __TYPE _messageBoxDict = new Dictionary() { };
-        private Control _contextNode;
-        private string _currentState = "";
-        private Array _lastStack = new Array() { };
+        #region Private fields
+        private Connection reconnectingConnection;
+        private int lastIndex = 0;
+        private string lastPath = "";
+        private StateNode contextNode;
+        private string currentState = "";
+        private IList<string> lastStack = new List<string>();
+        #endregion
 
+        #region FlowChart Method/Property Hiding
+        // We need to change methods to return StateMachineEditorLayer
+        // rather than FlowChartLayer
 
-        public void _Init()
+        protected new StateMachineEditorLayer currentLayer
+        {
+            get => base.currentLayer as StateMachineEditorLayer;
+            set => base.currentLayer = value;
+        }
+
+        public new StateMachineEditorLayer AddLayerTo(Control target)
+            => base.AddLayerTo(target) as StateMachineEditorLayer;
+
+        public new StateMachineEditorLayer GetLayer(NodePath nodePath)
+            => base.GetLayer(nodePath) as StateMachineEditorLayer;
+        #endregion
+
+        public StateMachineEditor()
         {
             pathViewer = new PathViewer();
             pathViewer.MouseFilter = MouseFilterEnum.Ignore;
-            pathViewer.Connect(nameof(PathViewer.DirPressed), this, nameof(_OnPathViewerDirPressed));
+            pathViewer.Connect(nameof(PathViewer.DirPressed), this, nameof(OnPathViewerDirPressed));
             topBar.AddChild(pathViewer);
 
-            conditionVisibility.hint_tooltip = "Hide/Show Conditions on Transition Line";
-            conditionVisibility.stretch_mode = TextureButton.STRETCH_KEEP_ASPECT_CENTERED;
-            conditionVisibility.toggle_mode = true;
-            conditionVisibility.size_flags_vertical = SIZEShrinkCenter;
-            conditionVisibility.focus_mode = FOCUSNone;
-            conditionVisibility.Connect("pressed", this, "_on_condition_visibility_pressed");
-            conditionVisibility.pressed = true;
+            conditionVisibility.HintTooltip = "Hide/Show Conditions on Transition Line";
+            conditionVisibility.StretchMode = TextureButton.StretchModeEnum.KeepAspectCentered;
+            conditionVisibility.ToggleMode = true;
+            conditionVisibility.SizeFlagsVertical = (int)SizeFlags.ShrinkCenter;
+            conditionVisibility.FocusMode = FocusModeEnum.None;
+            conditionVisibility.Connect("pressed", this, nameof(OnConditionVisibilityPressed));
+            conditionVisibility.Pressed = true;
             gadget.AddChild(conditionVisibility);
 
-            unsavedIndicator.size_flags_vertical = SIZEShrinkCenter;
-            unsavedIndicator.focus_mode = FOCUSNone;
+            unsavedIndicator.SizeFlagsVertical = (int)SizeFlags.ShrinkCenter;
+            unsavedIndicator.FocusMode = FocusModeEnum.None;
             gadget.AddChild(unsavedIndicator);
 
-            messageBox.SetAnchorsAndMarginsPreset(PRESETBottomWide);
-            messageBox.grow_vertical = GROWDirectionBegin;
+            messageBox.SetAnchorsAndMarginsPreset(LayoutPreset.BottomWide);
+            messageBox.GrowVertical = GrowDirection.Begin;
             AddChild(messageBox);
 
-            content.GetChild(0).name = "root";
+            content.GetChild(0).Name = "root";
 
             SetProcess(false);
-
         }
 
-        public void _Ready()
+        [OnReady]
+        public void RealReady()
         {
             createNewStateMachineContainer.Visible = false;
-            createNewStateMachine.Connect("pressed", this, "_on_create_new_state_machine_pressed");
-            contextMenu.Connect("index_pressed", this, "_on_context_menu_index_pressed");
-            stateNodeContextMenu.Connect("index_pressed", this, "_on_state_node_context_menu_index_pressed");
-            convertToStateConfirmation.Connect("confirmed", this, "_on_convert_to_state_confirmation_confirmed");
-            saveDialog.Connect("confirmed", this, "_on_save_dialog_confirmed");
-
+            createNewStateMachine.Connect("pressed", this, nameof(OnCreateNewStateMachinePressed));
+            contextMenu.Connect("index_pressed", this, nameof(OnContextMenuIndexPressed));
+            stateNodeContextMenu.Connect("index_pressed", this, nameof(OnStateNodeContextMenuIndexPressed));
+            convertToStateConfirmation.Connect("confirmed", this, nameof(OnConvertToStateConfirmationConfirmed));
+            saveDialog.Connect("confirmed", this, nameof(OnSaveDialogConfirmed));
         }
 
-        public void _Process(__TYPE delta)
+        public override void _Process(float delta)
         {
-            if (!debug_mode)
+            // Process is only used by the debug
+            if (!DebugMode)
             {
                 SetProcess(false);
                 return;
             }
-            if (!is_instance_valid(stateMachinePlayer))
+            if (!IsInstanceValid(stateMachinePlayer))
             {
                 SetProcess(false);
-                SetDebugMode(false);
+                DebugMode = false;
                 return;
             }
-            var stack = stateMachinePlayer.Get("Members/StackPlayer.gd/stack");
-            if (!stack)
+            var stack = stateMachinePlayer.Stack;
+            if (stack.Count > 0)
             {
                 SetProcess(false);
-                SetDebugMode(false);
+                DebugMode = false;
                 return;
 
             }
-            if (stack.Size() == 1)
+            if (stack.Count == 1)
             {
-                SetCurrentState(stateMachinePlayer.Get("Members/StackPlayer.gd/current"));
+                SetCurrentState(stateMachinePlayer.Current);
             }
             else
             {
-                var stackMaxIndex = stack.Size() - 1;
-                var prevIndex = stack.Find(_currentState);
+                var stackMaxIndex = stack.Count - 1;
+                var prevIndex = stack.IndexOf(currentState);
                 if (prevIndex == -1)
                 {
-                    if (_lastStack.Size() < stack.Size())
+                    if (lastStack.Count < stack.Count)
                     {
                         // Reproduce transition, for example:
                         // [Entry, Idle, Walk]
@@ -193,9 +234,9 @@ namespace GodotRollbackNetcode.StateMachine
                         // Idle -> Jump
                         // Jump -> Fall
                         int commonIndex = -1;
-                        foreach (var i in _lastStack.Size())
+                        for (int i = 0; i < lastStack.Count; i++)
                         {
-                            if (_lastStack[i] == stack[i])
+                            if (lastStack[i] == stack[i])
                             {
                                 commonIndex = i;
                                 break;
@@ -203,28 +244,21 @@ namespace GodotRollbackNetcode.StateMachine
                         }
                         if (commonIndex > -1)
                         {
-                            var countFromLastStack = _lastStack.Size() - 1 - commonIndex - 1;
-                            _lastStack.Invert();
+                            var countFromLastStack = lastStack.Count - 1 - commonIndex - 1;
+                            lastStack.Reverse();
                             // Transit back to common state
-                            foreach (var i in countFromLastStack)
-                            {
-                                SetCurrentState(_lastStack[i + 1]);
-                                // Transit to all missing state in current stack
-                            }
-                            foreach (var i in GD.Range(commonIndex + 1, stack.Size()))
-                            {
+                            for (int i = 0; i < countFromLastStack; i++)
+                                SetCurrentState(lastStack[i + 1]);
+
+                            // Transit to all missing state in current stack
+                            for (int i = commonIndex + 1; i < stack.Count; i++)
                                 SetCurrentState(stack[i]);
-                            }
                         }
                         else
-                        {
-                            SetCurrentState(stack.Back());
-                        }
+                            SetCurrentState(stack.PeekBack());
                     }
                     else
-                    {
-                        SetCurrentState(stack.Back());
-                    }
+                        SetCurrentState(stack.PeekBack());
                 }
                 else
                 {
@@ -236,175 +270,159 @@ namespace GodotRollbackNetcode.StateMachine
                     }
                 }
             }
-            _lastStack = stack;
-            var params = stateMachinePlayer.Get("Members/_parameters");
-            var localParams = stateMachinePlayer.Get("Members/_local_parameters");
-            paramPanel.UpdateParams(params, localParams);
-            GetFocusedLayer(_currentState).DebugUpdate(_currentState, params, localParams);
-
+            lastStack = new List<string>(stack);
+            var globalParams = stateMachinePlayer.Parameters;
+            var localParams = stateMachinePlayer.LocalParamters;
+            paramPanel.UpdateParams(globalParams, localParams);
+            GetFocusedLayer(currentState).DebugUpdate(currentState, globalParams, localParams);
         }
 
-        public void _OnPathViewerDirPressed(__TYPE dir, __TYPE index)
+        private void OnPathViewerDirPressed(string dir, int index)
         {
             var path = pathViewer.SelectDir(dir);
             SelectLayer(GetLayer(path));
 
-            if (_lastIndex > index)
+            if (lastIndex > index)
             {
                 // Going backward
-                var endStateParentPath = StateMachinePlayer.PathBackward(_lastPath);
-                var endStateName = StateMachinePlayer.PathEndDir(_lastPath);
-                var layer = content.GetNodeOrNull(endStateParentPath);
-                if (layer)
+                var endStateParentPath = StateMachinePlayer.PathBackward(lastPath);
+                var endStateName = StateMachinePlayer.PathEndDir(lastPath);
+                var layer = content.GetNodeOrNull<StateMachineEditorLayer>(endStateParentPath);
+                if (layer != null)
                 {
-                    var node = layer.content_nodes.GetNodeOrNull(endStateName);
-                    if (node)
-                    {
-                        if (!node.state.states)
-                        {
-                            // Convert state machine node back to state node
-                            ConvertToState(layer, node);
-
-                        }
-                    }
+                    var node = layer.ContentNodes.GetNodeOrNull<StateNode>(endStateName);
+                    if (node != null && node.State is StateMachine)
+                        // Convert state machine node back to state node
+                        ConvertToState(layer, node);
                 }
             }
-            _lastIndex = index;
-            _lastPath = path;
-
+            lastIndex = index;
+            lastPath = path;
         }
 
-        public void _OnContextMenuIndexPressed(__TYPE index)
+        /// <summary>
+        /// Handles instancings nodes
+        /// </summary>
+        /// <param name="index"></param>
+        private void OnContextMenuIndexPressed(int index)
         {
-            var newNode = StateNode.Instance();
-            newNode.theme.GetStylebox("focus", "FlowChartNode").border_color = editorAccentColor;
+            var newNode = stateNodePrefab.Instance<StateNode>();
+            newNode.Theme.GetStylebox("focus", "FlowChartNode").Set("border_color", editorAccentColor);
             switch (index)
             {
                 case 0: // Add State
-                    newNode.name = "State";
+                    newNode.Name = "State";
                     break;
                 case 1: // Add Entry
-                    if (State.ENTRY_STATE in currentLayer.state_machine.states)
-				{
+                    if (currentLayer.StateMachine.States.Contains(State.EntryState))
+                    {
                         GD.PushWarning("Entry node already exist");
                         return;
                     }
-                    newNode.name = State.ENTRY_STATE;
+                    newNode.Name = State.EntryState;
                     break;
                 case 2: // Add Exit
-                    if (State.EXIT_STATE in currentLayer.state_machine.states)
-				{
+                    if (currentLayer.StateMachine.States.Contains(State.ExitState))
+                    {
                         GD.PushWarning("Exit node already exist");
                         return;
                     }
-                    newNode.name = State.EXIT_STATE;
+                    newNode.Name = State.ExitState;
                     break;
             }
-            newNode.rect_position = ContentPosition(GetLocalMousePosition());
+            newNode.RectPosition = ContentPosition(GetLocalMousePosition());
             AddNode(currentLayer, newNode);
-
         }
 
-        public void _OnStateNodeContextMenuIndexPressed(__TYPE index)
+        private void OnStateNodeContextMenuIndexPressed(int index)
         {
-            if (!_context_node)
-            {
+            if (contextNode == null)
                 return;
 
-            }
             switch (index)
             {
                 case 0: // Copy
-                    _copyingNodes = new Array() { _contextNode };
-                    _contextNode = null;
+                    copyingNodes = new GDC.Array<Control>() { contextNode };
+                    contextNode = null;
                     break;
                 case 1: // Duplicate
-                    DuplicateNodes(currentLayer, new Array() { _contextNode });
-                    _contextNode = null;
+                    DuplicateNodes(currentLayer, new GDC.Array<Control>() { contextNode });
+                    contextNode = null;
                     break;
                 case 2: // Separator
-                    _contextNode = null;
+                    contextNode = null;
                     break;
                 case 3: // Convert
                     convertToStateConfirmation.PopupCentered();
-
                     break;
             }
         }
 
-        public void _OnConvertToStateConfirmationConfirmed()
+        private void OnConvertToStateConfirmationConfirmed()
         {
-            ConvertToState(currentLayer, _contextNode);
-            _contextNode.Update();// Update outlook of node
-                                  // Remove layer
-            var path = GD.Str(pathViewer.GetCwd(), "/", _contextNode.name);
-            var layer = GetLayer(path);
-            if (layer)
-            {
-                layer.QueueFree();
-            }
-            _contextNode = null;
+            ConvertToState(currentLayer, contextNode);
+            contextNode.Update(); // Update display of node
 
+            // Remove layer
+            var path = GD.Str(pathViewer.GetCwd(), "/", contextNode.Name);
+            var layer = GetLayer(path);
+            if (layer != null)
+                layer.QueueFree();
+            contextNode = null;
         }
 
-        public void _OnSaveDialogConfirmed()
+        private void OnSaveDialogConfirmed()
         {
             Save();
-
         }
 
-        public void _OnCreateNewStateMachinePressed()
+        private void OnCreateNewStateMachinePressed()
         {
-            var newStateMachine = new StateMachine()
-
-
-        stateMachinePlayer.state_machine = newStateMachine;
-            SetStateMachine(newStateMachine);
+            var newStateMachine = new StateMachine();
+            stateMachinePlayer.StateMachine = newStateMachine;
+            StateMachine = newStateMachine;
             createNewStateMachineContainer.Visible = false;
             CheckHasEntry();
-            EmitSignal("inspector_changed", "state_machine");
+            EmitSignal(nameof(InspectorChanged), "StateMachine");
 
         }
 
-        public void _OnConditionVisibilityPressed()
+        private void OnConditionVisibilityPressed()
         {
-            foreach (var line in currentLayer.content_lines.GetChildren())
-            {
-                line.vbox.Visible = conditionVisibility.pressed;
-
-            }
+            foreach (TransitionLine line in currentLayer.ContentLines.GetChildren())
+                line.ConditionVisibility = conditionVisibility.Pressed;
         }
 
-        public void _OnDebugModeChanged(__TYPE newDebugMode)
+        private void OnDebugModeChanged(bool newDebugMode)
         {
             if (newDebugMode)
             {
                 paramPanel.Show();
-                AddMessage(DEBUGModeMsg.key, DEBUGModeMsg.text);
+                AddMessage(DebugModeMsg);
                 SetProcess(true);
                 // mouseFilter = MOUSEFilterIgnore;
-                canGuiSelectNode = false;
-                canGuiDeleteNode = false;
-                canGuiConnectNode = false;
-                canGuiNameEdit = false;
-                canGuiContextMenu = false;
+                CanGuiSelectNode = false;
+                CanGuiDeleteNode = false;
+                CanGuiConnectNode = false;
+                CanGuiNameEdit = false;
+                CanGuiContextMenu = false;
             }
             else
             {
                 paramPanel.ClearParams();
                 paramPanel.Hide();
-                RemoveMessage(DEBUGModeMsg.key);
+                RemoveMessage(DebugModeMsg);
                 SetProcess(false);
-                canGuiSelectNode = true;
-                canGuiDeleteNode = true;
-                canGuiConnectNode = true;
-                canGuiNameEdit = true;
-                canGuiContextMenu = true;
+                CanGuiSelectNode = true;
+                CanGuiDeleteNode = true;
+                CanGuiConnectNode = true;
+                CanGuiNameEdit = true;
+                CanGuiContextMenu = true;
 
             }
         }
 
-        public void _OnStateMachinePlayerChanged(StateMachinePlayer newStateMachinePlayer)
+        private void OnStateMachinePlayerChanged(StateMachinePlayer newStateMachinePlayer)
         {
             if (StateMachinePlayer == null)
                 return;
@@ -419,7 +437,7 @@ namespace GodotRollbackNetcode.StateMachine
                 createNewStateMachineContainer.Visible = false;
         }
 
-        public void _OnStateMachineChanged(StateMachine newStateMachine)
+        private void OnStateMachineChanged(StateMachine newStateMachine)
         {
             var rootLayer = GetLayer("root");
             pathViewer.SelectDir("root");// Before selectLayer, so pathViewer will be updated in _onLayerSelected
@@ -455,12 +473,144 @@ namespace GodotRollbackNetcode.StateMachine
                 switch (mouseButtonEvent.ButtonIndex)
                 {
                     case (int)ButtonList.Right:
-                        if (mouseButtonEvent.Pressed && canGuiContextMenu)
+                        if (mouseButtonEvent.Pressed && CanGuiContextMenu)
                         {
-                            contextMenu.SetItemDisabled(1, currentLayer.StateMachine.HasEntry());
-                            contextMenu.SetItemDisabled(2, currentLayer.StateMachine.HasExit());
-                            contextMenu.rect_position = GetViewport().GetMousePosition();
-                            contextMenu.Popup();
+                            contextMenu.SetItemDisabled(1, currentLayer.StateMachine.HasEntry);
+                            contextMenu.SetItemDisabled(2, currentLayer.StateMachine.HasExit);
+                            contextMenu.RectPosition = GetViewport().GetMousePosition();
+                            contextMenu.Popup_();
+                        }
+                        break;
+                }
+            }
+        }
+
+        public override void _Input(InputEvent inputEvent)
+        {
+            // Intercept save action
+            if (Visible && inputEvent is InputEventKey keyEvent)
+            {
+                switch (keyEvent.Scancode)
+                {
+                    case (int)ButtonList.Right:
+                        if (keyEvent.Control && keyEvent.Pressed)
+                            SaveRequest();
+                        break;
+                }
+            }
+        }
+
+        public StateMachineEditorLayer CreateLayer(StateNode node)
+        {
+            // Create/Move to new layer
+            var newStateMachine = ConvertToStateMachine(currentLayer, node);
+            // Determine current layer path
+            var parentPath = pathViewer.GetCwd();
+            var path = GD.Str(parentPath, "/", node.Name);
+            var layer = GetLayer(path);
+            pathViewer.AddDir(node.State.Name);// Before selectLayer, so pathViewer will be updated in _onLayerSelected
+            if (layer == null)
+            {
+                // New layer to spawn
+                layer = AddLayerTo(GetLayer(parentPath));
+                layer.Name = node.State.Name;
+                layer.StateMachine = newStateMachine;
+                DrawGraph(layer);
+            }
+            lastIndex = pathViewer.GetChildCount() - 1;
+            lastPath = path;
+            return layer;
+
+        }
+
+        public StateMachineEditorLayer OpenLayer(string path)
+        {
+            var dir = new StateDirectory(path);
+            dir.Goto(dir.EndIndex);
+            dir.Back();
+            var nextLayer = GetNextLayer(dir, GetLayer("root"));
+            SelectLayer(nextLayer);
+            return nextLayer;
+        }
+
+        /// <summary>
+        /// Recursively get next layer
+        /// </summary>
+        /// <param name="dir"></param>
+        /// <param name="baseLayer"></param>
+        /// <returns></returns>
+        public StateMachineEditorLayer GetNextLayer(StateDirectory dir, StateMachineEditorLayer baseLayer)
+        {
+            var nextLayer = baseLayer;
+            var nextLayerName = dir.Next();
+            if (nextLayerName != null)
+            {
+                nextLayer = baseLayer.GetNodeOrNull<StateMachineEditorLayer>(nextLayerName);
+                if (nextLayer != null)
+                {
+                    nextLayer = GetNextLayer(dir, nextLayer);
+                }
+                else
+                {
+                    var toDir = new StateDirectory(dir.Current);
+
+                    toDir.Goto(toDir.EndIndex);
+                    toDir.Back();
+                    var node = baseLayer.ContentNodes.GetNodeOrNull<StateNode>(toDir.CurrentEnd);
+                    nextLayer = GetNextLayer(dir, CreateLayer(node));
+                }
+            }
+            return nextLayer;
+        }
+
+        public StateMachineEditorLayer GetFocusedLayer(string state)
+        {
+            var currentDir = new StateDirectory(state);
+
+            currentDir.Goto(currentDir.EndIndex);
+            currentDir.Back();
+            return GetLayer(GD.Str("root/", currentDir.Current));
+
+        }
+
+        private void OnStateNodeGuiInput(InputEvent inputEvent, StateNode node)
+        {
+            if (node.State.IsEntry || node.State.IsExit)
+                return;
+
+            if (inputEvent is InputEventMouseButton mouseButtonEvent)
+            {
+                switch (mouseButtonEvent.ButtonIndex)
+                {
+                    case (int)ButtonList.Left:
+                        if (mouseButtonEvent.Pressed)
+                        {
+                            if (mouseButtonEvent.Doubleclick)
+                            {
+                                if (node.NameEdit.GetRect().HasPoint(mouseButtonEvent.Position) && CanGuiNameEdit)
+                                {
+                                    // Edit State name if within LineEdit
+                                    node.EnableNameEdit(true);
+                                    AcceptEvent();
+                                }
+                                else
+                                {
+                                    var layer = CreateLayer(node);
+                                    SelectLayer(layer);
+                                    AcceptEvent();
+                                }
+                            }
+                        }
+                        break;
+                    case (int)ButtonList.Right:
+                        if (mouseButtonEvent.Pressed)
+                        {
+                            // State node context menu
+                            contextNode = node;
+                            stateNodeContextMenu.RectPosition = GetViewport().GetMousePosition();
+                            stateNodeContextMenu.Popup_();
+                            stateNodeContextMenu.SetItemDisabled(3, !(node.State is StateMachine));
+                            AcceptEvent();
 
                         }
                         break;
@@ -468,686 +618,533 @@ namespace GodotRollbackNetcode.StateMachine
             }
         }
 
-        public void _Input(__TYPE event)
-{
-            // Intercept save action
-            if (visible && event is InputEventKey)
-
+        private StateMachine ConvertToStateMachine(StateMachineEditorLayer layer, StateNode stateNnode)
         {
-            switch ( event.scancode)
-
+            // Convert State to StateMachine
+            StateMachine newStateMachine;
+            if (stateNnode.State is StateMachine stateMachine)
+                newStateMachine = stateMachine;
+            else
             {
-				case KEYS:
-            if (event.control && event.pressed)
+                newStateMachine = new StateMachine();
 
-                    {
-            SaveRequest();
-
+                newStateMachine.Name = stateNnode.State.Name;
+                newStateMachine.GraphOffset = stateNnode.State.GraphOffset;
+                layer.StateMachine.RemoveState(stateNnode.State.Name);
+                layer.StateMachine.AddState(newStateMachine);
+                stateNnode.State = newStateMachine;
+            }
+            return newStateMachine;
         }
-        break;
-        }
-    }
-}
 
-public __TYPE CreateLayer(__TYPE node)
-{
-    // Create/Move to new layer
-    var newStateMachine = ConvertToStateMachine(currentLayer, node);
-    // Determine current layer path
-    var parentPath = pathViewer.GetCwd();
-    var path = GD.Str(parentPath, "/", node.name);
-    var layer = GetLayer(path);
-    pathViewer.AddDir(node.state.name);// Before selectLayer, so pathViewer will be updated in _onLayerSelected
-    if (!layer)
-    {
-        // New layer to spawn
-        layer = AddLayerTo(GetLayer(parentPath));
-        layer.name = node.state.name;
-        layer.state_machine = newStateMachine;
-        DrawGraph(layer);
-    }
-    _lastIndex = pathViewer.GetChildCount() - 1;
-    _lastPath = path;
-    return layer;
-
-}
-
-public __TYPE OpenLayer(__TYPE path)
-{
-    var dir = StateDirectory.new(path)
-
-        dir.Goto(dir.GetEndIndex());
-    dir.Back();
-    var nextLayer = GetNextLayer(dir, GetLayer("root"));
-    SelectLayer(nextLayer);
-    return nextLayer;
-
-    // Recursively get next layer
-}
-
-public __TYPE GetNextLayer(__TYPE dir, __TYPE baseLayer)
-{
-    var nextLayer = baseLayer;
-    var np = dir.Next();
-    if (np)
-    {
-        nextLayer = baseLayer.GetNodeOrNull(np);
-        if (nextLayer)
+        private State ConvertToState(StateMachineEditorLayer layer, StateNode statNnode)
         {
-            nextLayer = GetNextLayer(dir, nextLayer);
+            // Convert StateMachine to State
+            State newState;
+            if (statNnode.State is StateMachine)
+            {
+                newState = new State();
+                newState.Name = statNnode.State.Name;
+                newState.GraphOffset = statNnode.State.GraphOffset;
+                layer.StateMachine.RemoveState(statNnode.State.Name);
+                layer.StateMachine.AddState(newState);
+                statNnode.State = newState;
+            }
+            else
+            {
+                newState = statNnode.State;
+            }
+            return newState;
         }
-        else
+
+        public override FlowChartLayer CreateLayerInstance()
         {
-            var toDir = StateDirectory.new(dir.GetCurrent())
-
-                toDir.Goto(toDir.GetEndIndex());
-            toDir.Back();
-            var node = baseLayer.content_nodes.GetNodeOrNull(toDir.GetCurrentEnd());
-            nextLayer = GetNextLayer(dir, CreateLayer(node));
+            var layer = stateMachineEditorLayerPrefab.Instance<StateMachineEditorLayer>();
+            layer.Construct(editorAccentColor);
+            return layer;
         }
-    }
-    return nextLayer;
 
-}
+        public override FlowChartLine CreateLineInstance()
+        {
+            var line = transitionLinePrefab.Instance<TransitionLine>();
+            line.Theme.GetStylebox("focus", "FlowChartLine").Set("shadow_color", editorAccentColor);
+            line.Theme.SetIcon("arrow", "FlowChartLine", transitionArrowIcon);
+            return line;
+        }
 
-public __TYPE GetFocusedLayer(__TYPE state)
-{
-    var currentDir = StateDirectory.new(state)
+        /// <summary>
+        /// Request to save current editing StateMachine
+        /// </summary>
+        public void SaveRequest()
+        {
+            if (!CanSave())
+                return;
 
-        currentDir.Goto(currentDir.GetEndIndex());
-    currentDir.Back();
-    return GetLayer(GD.Str("root/", currentDir.GetCurrent()));
+            saveDialog.DialogText = $"Saving StateMachine to {stateMachine.ResourcePath}";
+            saveDialog.PopupCentered();
+        }
 
-}
+        /// <summary>
+        /// Save current editing StateMachine
+        /// </summary>
+        public void Save()
+        {
+            if (!CanSave())
+                return;
 
-public void _OnStateNodeGuiInput(__TYPE event, __TYPE node)
-{
-    if (node.state.IsEntry() || node.state.IsExit())
-    {
-        return;
+            unsavedIndicator.Text = "";
+            ResourceSaver.Save(stateMachine.ResourcePath, stateMachine);
+        }
 
-    }
-    if (event is InputEventMouseButton)
-		{
-    switch ( event.button_index)
-			{
-				case BUTTONLeft:
-        if (event.pressed)
-					{
-            if (event.doubleclick)
-						{
-                if (node.name_edit.GetRect().HasPoint(event.position) && canGuiNameEdit)
+        /// <summary>
+        /// Clear editor
+        /// </summary>
+        /// <param name="layer"></param>
+        public void ClearGraph(FlowChartLayer layer)
+        {
+            ClearConnections();
+            foreach (Control child in layer.ContentNodes.GetChildren())
+            {
+                if (child is StateNode)
                 {
-                    // Edit State name if within LineEdit
-                    node.EnableNameEdit(true);
-                    AcceptEvent();
-                }
-                else
-                {
-                    var layer = CreateLayer(node);
-                    SelectLayer(layer);
-                    AcceptEvent();
+                    layer.ContentNodes.RemoveChild(child);
+                    child.QueueFree();
                 }
             }
+            unsavedIndicator.Text = ""; // Clear graph is not action by user
         }
-        break;
-				case BUTTONRight:
-        if (event.pressed)
-					{
-            // State node context menu
-            _contextNode = node;
-            stateNodeContextMenu.rect_position = GetViewport().GetMousePosition();
-            stateNodeContextMenu.Popup();
-            stateNodeContextMenu.SetItemDisabled(3, !(node.state is StateMachine));
-            AcceptEvent();
 
-        }
-        break;
-    }
-}
-	}
-	
-	public __TYPE ConvertToStateMachine(FlowChartLayer layer, __TYPE node)
-{
-    // Convert State to StateMachine
-    var newStateMachine;
-    if (node.state is StateMachine)
-    {
-        newStateMachine = node.state;
-    }
-    else
-    {
-        newStateMachine = new StateMachine()
-
-            newStateMachine.name = node.state.name;
-        newStateMachine.graph_offset = node.state.graph_offset;
-        layer.state_machine.RemoveState(node.state.name);
-        layer.state_machine.AddState(newStateMachine);
-        node.state = newStateMachine;
-    }
-    return newStateMachine;
-
-}
-
-public __TYPE ConvertToState(FlowChartLayer layer, __TYPE node)
-{
-    // Convert StateMachine to State
-    var newState;
-    if (node.state is StateMachine)
-    {
-        newState = new State()
-
-            newState.name = node.state.name;
-        newState.graph_offset = node.state.graph_offset;
-        layer.state_machine.RemoveState(node.state.name);
-        layer.state_machine.AddState(newState);
-        node.state = newState;
-    }
-    else
-    {
-        newState = node.state;
-    }
-    return newState;
-
-}
-
-public __TYPE CreateLayerInstance()
-{
-    var layer = new Control()
-
-        layer.SetScript(StateMachineEditorLayer);
-    layer.editor_accent_color = editorAccentColor;
-    return layer;
-
-}
-
-public __TYPE CreateLineInstance()
-{
-    var line = TransitionLine.Instance();
-    line.theme.GetStylebox("focus", "FlowChartLine").shadow_color = editorAccentColor;
-    line.theme.SetIcon("arrow", "FlowChartLine", transitionArrowIcon);
-    return line;
-
-    // Request to save current editing StateMachine
-}
-
-public void SaveRequest()
-{
-    if (!can_save())
-    {
-        return;
-
-    }
-    saveDialog.dialog_text = "Saving StateMachine to %s" % stateMachine.resource_path;
-    saveDialog.PopupCentered();
-
-    // Save current editing StateMachine
-}
-
-public void Save()
-{
-    if (!can_save())
-    {
-        return;
-
-    }
-    unsavedIndicator.text = "";
-    ResourceSaver.Save(stateMachine.resource_path, stateMachine);
-
-    // Clear editor
-}
-
-public void ClearGraph(FlowChartLayer layer)
-{
-    ClearConnections();
-    foreach (var child in layer.content_nodes.GetChildren())
-    {
-        if (child is StateNodeScript)
+        /// <summary>
+        /// Intialize editor with current editing StateMachine
+        /// </summary>
+        /// <param name="layer"></param>
+        public void DrawGraph(FlowChartLayer layer)
         {
-            layer.content_nodes.RemoveChild(child);
-            child.QueueFree();
-        }
-    }
-    unsavedIndicator.text = "";// Clear graph is !action by user
+            if (!(layer is StateMachineEditorLayer stateLayer)) return;
 
-    // Intialize editor with current editing StateMachine
-}
-
-public void DrawGraph(FlowChartLayer layer)
-{
-    foreach (var stateKey in layer.state_machine.states.Keys())
-    {
-        var state = layer.state_machine.states[stateKey];
-        var newNode = StateNode.Instance();
-        newNode.theme.GetStylebox("focus", "FlowChartNode").border_color = editorAccentColor;
-        newNode.name = stateKey;// Set before addNode to let engine handle duplicate name
-        AddNode(layer, newNode);
-        // Set after addNode to make sure UIs are initialized
-        newNode.state = state;
-        newNode.state.name = stateKey;
-        newNode.rect_position = state.graph_offset;
-    }
-    foreach (var stateKey in layer.state_machine.states.Keys())
-    {
-        var fromTransitions = layer.state_machine.transitions.Get(stateKey);
-        if (fromTransitions)
-        {
-            foreach (var transition in fromTransitions.Values())
+            foreach (string stateKey in stateLayer.StateMachine.States.Keys)
             {
-                ConnectNode(layer, transition.from, transition.to);
-                layer._connections[transition.from][transition.to].line.transition = transition;
+                var state = stateLayer.StateMachine.States.Get<State>(stateKey);
+                var newNode = stateNodePrefab.Instance<StateNode>();
+                newNode.Theme.GetStylebox("focus", "FlowChartNode").Set("border_color", editorAccentColor);
+                newNode.Name = stateKey; // Set before addNode to let engine handle duplicate name
+                AddNode(stateLayer, newNode);
+                // Set after addNode to make sure UIs are initialized
+                newNode.State = state;
+                newNode.State.Name = stateKey;
+                newNode.RectPosition = state.GraphOffset;
             }
-        }
-    }
-    Update();
-    unsavedIndicator.text = "";// Draw graph is !action by user
-
-    // Add message to MessageBox(overlay text at bottom of editor)
-}
-
-public __TYPE AddMessage(__TYPE key, __TYPE text)
-{
-    var label = new Label()
-
-        label.text = text;
-    _messageBoxDict[key] = label;
-    messageBox.AddChild(label);
-    return label;
-
-    // Remove message from messageBox
-}
-
-public __TYPE RemoveMessage(__TYPE key)
-{
-    var control = _messageBoxDict.Get(key);
-    if (control)
-    {
-        _messageBoxDict.Erase(key);
-        messageBox.RemoveChild(control);
-        // Weird behavior of VBoxContainer, only sort children properly after changing growDirection
-        messageBox.grow_vertical = GROWDirectionEnd;
-        messageBox.grow_vertical = GROWDirectionBegin;
-        return true;
-    }
-    return false;
-
-    // Check if current editing StateMachine has entry, warns user if entry state missing
-}
-
-public void CheckHasEntry()
-{
-    if (!current_layer.state_machine)
-    {
-        return;
-    }
-    if (!current_layer.state_machine.HasEntry())
-    {
-        if (!(ENTRYStateMissingMsg.key in _messageBoxDict))
-			{
-    AddMessage(ENTRYStateMissingMsg.key, ENTRYStateMissingMsg.text);
-}
-		}
-
-        else
-{
-    if (ENTRYStateMissingMsg.key in  _messageBoxDict)
-			{
-        RemoveMessage(ENTRYStateMissingMsg.key);
-
-        // Check if current editing StateMachine is nested && has exit, warns user if exit state missing
-    }
-}
-	}
-	
-	public void CheckHasExit()
-{
-    if (!current_layer.state_machine)
-    {
-        return;
-    }
-    if (!path_viewer.GetCwd() == "root") // Nested state
-    {
-        if (!current_layer.state_machine.HasExit())
-        {
-            if (!(EXITStateMissingMsg.key in _messageBoxDict))
-				{
-    AddMessage(EXITStateMissingMsg.key, EXITStateMissingMsg.text);
-}
-return;
-			}
-		}
-		if (EXITStateMissingMsg.key in _messageBoxDict)
-		{
-    RemoveMessage(EXITStateMissingMsg.key);
-
-}
-	}
-	
-	public void _OnLayerSelected(FlowChartLayer layer)
-{
-    if (layer)
-    {
-        layer.ShowContent();
-        CheckHasEntry();
-        CheckHasExit();
-
-    }
-}
-
-public void _OnLayerDeselected(FlowChartLayer layer)
-{
-    if (layer)
-    {
-        layer.HideContent();
-
-    }
-}
-
-public void _OnNodeDragged(FlowChartLayer layer, Node node, bool dragged)
-{
-    node.state.graph_offset = node.rect_position;
-    _OnEdited();
-
-}
-
-public void _OnNodeAdded(FlowChartLayer layer, Node newNode)
-{
-    newNode.undo_redo = undoRedo;
-    newNode.state.name = newNode.name;
-    newNode.state.graph_offset = newNode.rect_position;
-    newNode.Connect("name_edit_entered", this, "_on_node_name_edit_entered", new Array() { newNode })
-
-        newNode.Connect("gui_input", this, "_on_state_node_gui_input", new Array() { newNode })
-
-        layer.state_machine.AddState(newNode.state);
-    CheckHasEntry();
-    CheckHasExit();
-    _OnEdited();
-
-}
-
-public __TYPE _OnNodeRemoved(FlowChartLayer layer, __TYPE nodeName)
-{
-    var path = GD.Str(pathViewer.GetCwd(), "/", nodeName);
-    var layerToRemove = GetLayer(path);
-    if (layerToRemove)
-    {
-        layerToRemove.GetParent().RemoveChild(layerToRemove);
-        layerToRemove.QueueFree();
-    }
-    var result = layer.state_machine.RemoveState(nodeName);
-    CheckHasEntry();
-    CheckHasExit();
-    _OnEdited();
-    return result;
-
-}
-
-public void _OnNodeConnected(FlowChartLayer layer, __TYPE from, __TYPE to)
-{
-    if (_reconnectingConnection)
-    {
-        // Reconnection will trigger _onNodeConnected after _onNodeReconnectEnd/_on_node_reconnect_failed
-        if (_reconnectingConnection.from_node.name == from && _reconnectingConnection.to_node.name == to)
-        {
-            _reconnectingConnection = null;
-            return;
-        }
-    }
-    if (layer.state_machine.transitions.Has(from))
-    {
-        if (layer.state_machine.transitions[from].Has(to))
-        {
-            return; // Already existed as it is loaded from file
-
-        }
-    }
-    var line = layer._connections[from][to].line;
-    var newTransition = Transition.new(from, to)
-
-        line.transition = newTransition;
-    layer.state_machine.AddTransition(newTransition);
-    ClearSelection();
-    Select(line);
-    _OnEdited();
-
-}
-
-public void _OnNodeDisconnected(FlowChartLayer layer, string from, string to)
-{
-    layer.state_machine.RemoveTransition(from, to);
-    _OnEdited();
-
-}
-
-public void _OnNodeReconnectBegin(FlowChartLayer layer, string from, string to)
-{
-    _reconnectingConnection = layer._connections[from][to];
-    layer.state_machine.RemoveTransition(from, to);
-
-}
-
-public void _OnNodeReconnectEnd(FlowChartLayer layer, string from, string to)
-{
-    var transition = _reconnectingConnection.line.transition;
-    transition.to = to;
-    layer.state_machine.AddTransition(transition);
-    ClearSelection();
-    Select(_reconnectingConnection.line);
-
-}
-
-public void _OnNodeReconnectFailed(FlowChartLayer layer, string from, string to)
-{
-    var transition = _reconnectingConnection.line.transition;
-    layer.state_machine.AddTransition(transition);
-    ClearSelection();
-    Select(_reconnectingConnection.line);
-
-}
-
-public bool _RequestConnectFrom(FlowChartLayer layer, string from)
-{
-    if (from == State.ExitState)
-    {
-        return false;
-    }
-    return true;
-
-}
-
-public bool _RequestConnectTo(FlowChartLayer layer, string to)
-{
-    if (to == State.EntryState)
-    {
-        return false;
-    }
-    return true;
-
-}
-
-public void _OnDuplicated(FlowChartLayer layer, __TYPE oldNodes, __TYPE newNodes)
-{
-    // Duplicate condition as well
-    foreach (var i in oldNodes.Size())
-    {
-        var fromNode = oldNodes[i];
-        foreach (var connectionPair in GetConnectionList())
-        {
-            if (fromNode.name == connectionPair.from)
+            foreach (string stateKey in stateLayer.StateMachine.States.Keys)
             {
-                foreach (var j in oldNodes.Size())
+                var fromTransitions = stateLayer.StateMachine.GetNodeTransitionsDict(stateKey);
+                if (fromTransitions != null)
                 {
-                    var toNode = oldNodes[j];
-                    if (toNode.name == connectionPair.to)
+                    foreach (Transition transition in fromTransitions.Values)
                     {
-                        var oldConnection = layer._connections[connectionPair.from][connectionPair.to];
-                        var newConnection = layer._connections[newNodes[i].name][newNodes[j].name];
-                        foreach (var condition in oldConnection.line.transition.conditions.Values())
-                        {
-                            newConnection.line.transition.AddCondition(condition.Duplicate())
-
-                            }
+                        ConnectNode(stateLayer, transition.From, transition.To);
+                        var transitionLine = stateLayer.GetConnection(transition.From, transition.To).Line as TransitionLine;
+                        transitionLine.Transition = transition;
                     }
                 }
             }
+            Update();
+            unsavedIndicator.Text = ""; // Draw graph is not an action by user
         }
-    }
-    _OnEdited();
 
-}
-
-public void _OnNodeNameEditEntered(__TYPE newName, __TYPE node)
-{
-    var old = node.state.name;
-    var new = newName
-
-        if old == new:
-			return;
-if "/" in new || "\\" in new: // No back/forward-slash
-			GD.PushWarning("Illegal State Name: / && \\ are !allowed in State Name(%s)" % new);
-node.name_edit.text = old;
-return;
-
-if (currentLayer.state_machine.ChangeStateName(old, new))
-{
-    RenameNode(currentLayer, node.name, new);
-    node.name = new
-    // Rename layer as well
-    var path = GD.Str(pathViewer.GetCwd(), "/", node.name);
-    var layer = GetLayer(path);
-    if (layer)
-    {
-        layer.name = new
-
-            }
-    foreach (var child in pathViewer.GetChildren())
-    {
-        if (child.text == old)
+        /// <summary>
+        /// Add message to MessageBox (overlay text at bottom of editor)
+        /// </summary>
+        /// <param name="key"></param>
+        /// <param name="text"></param>
+        /// <returns></returns>
+        public Label AddMessage(MessageBoxMessage message)
         {
-            child.text = new
-
-                    break;
+            var label = new Label();
+            label.Text = message.Text;
+            messageBoxDict[message.Key] = label;
+            messageBox.AddChild(label);
+            return label;
         }
-    }
-    _OnEdited();
-}
-else
-{
-    node.name_edit.text = old;
 
-}
-	}
-	
-	public void _OnEdited()
-{
-    unsavedIndicator.text = "*";
-
-}
-
-public void _OnRemoteTransited(__TYPE from, __TYPE to)
-{
-    var fromDir = StateDirectory.new(from)
-
-        var toDir = StateDirectory.new(to)
-
-        var focusedLayer = GetFocusedLayer(from);
-    if (from)
-    {
-        if (focusedLayer)
+        /// <summary>
+        /// Returns whether the MessageBox already has <paramref name="message"/> or not.
+        /// </summary>
+        /// <param name="message"></param>
+        /// <returns></returns>
+        public bool HasMessage(MessageBoxMessage message)
         {
-            focusedLayer.DebugTransitOut(from, to);
+            return messageBoxDict.Contains(message.Key);
         }
-    }
-    if (to)
-    {
-        if (fromDir.IsNested() && fromDir.IsExit())
+
+        /// <summary>
+        /// Remove message from the MessageBox
+        /// </summary>
+        /// <param name="key"></param>
+        /// <returns></returns>
+        public bool RemoveMessage(MessageBoxMessage message)
         {
-            if (focusedLayer)
+            var control = messageBoxDict.Get<Label>(message.Key);
+            if (control != null)
             {
-                var path = pathViewer.Back();
-                SelectLayer(GetLayer(path));
+                messageBoxDict.Remove(message.Key);
+                messageBox.RemoveChild(control);
+                // Weird behavior of VBoxContainer, only sort children properly after changing growDirection
+                messageBox.GrowVertical = GrowDirection.End;
+                messageBox.GrowVertical = GrowDirection.Begin;
+                return true;
+            }
+            return false;
+        }
+
+        /// <summary>
+        /// Check if current editing StateMachine has entry, warns user if entry state missing
+        /// </summary>
+        public void CheckHasEntry()
+        {
+            if (currentLayer.StateMachine == null)
+                return;
+
+            if (currentLayer.StateMachine.HasEntry)
+            {
+                // Has entry so remove any entry missing messages
+                if (HasMessage(EntryStateMissingMsg))
+                    RemoveMessage(EntryStateMissingMsg);
+            }
+            else
+            {
+                // Doesn't have entry, so add entry state missing message
+                if (!HasMessage(EntryStateMissingMsg))
+                    AddMessage(EntryStateMissingMsg);
             }
         }
-        else if (toDir.IsNested())
+
+        /// <summary>
+        /// Check if current editing StateMachine is nested && has exit, warns user if exit state missing
+        /// </summary>
+        public void CheckHasExit()
         {
-            if (toDir.IsEntry() && focusedLayer)
+            if (currentLayer.StateMachine == null)
+                return;
+
+            if (pathViewer.GetCwd() != "root") // Nested state
             {
-                // Open into next layer
-                toDir.Goto(toDir.GetEndIndex());
-                toDir.Back();
-                var node = focusedLayer.content_nodes.GetNodeOrNull(toDir.GetCurrentEnd());
-                if (node)
+                if (!currentLayer.StateMachine.HasExit && !HasMessage(ExitStateMissingMsg))
+                    AddMessage(ExitStateMissingMsg);
+
+            }
+            else
+            {
+                if (HasMessage(ExitStateMissingMsg))
+                    RemoveMessage(ExitStateMissingMsg);
+            }
+        }
+
+        #region Flowchart Lifetime Calls
+        public override void OnLayerSelected(FlowChartLayer layer)
+        {
+            if (layer != null)
+            {
+                layer.ShowContent();
+                CheckHasEntry();
+                CheckHasExit();
+            }
+        }
+
+        public override void OnLayerDeselected(FlowChartLayer layer)
+        {
+            if (layer != null)
+                layer.HideContent();
+        }
+
+        public override void OnNodeDragged(FlowChartLayer layer, Control node, Vector2 dragDelta)
+        {
+            if (!(node is StateNode stateNode)) return;
+
+            stateNode.State.GraphOffset = stateNode.RectPosition;
+            OnEdited();
+        }
+
+        public override void OnNodeAdded(FlowChartLayer layer, Control newNode)
+        {
+            if (!(newNode is StateNode stateNode) || !(layer is StateMachineEditorLayer stateLayer)) return;
+
+            stateNode.Construct(undoRedo);
+            stateNode.State.Name = stateNode.Name;
+            stateNode.State.GraphOffset = stateNode.RectPosition;
+            stateNode.Connect(nameof(StateNode.NameEditEntered), this, nameof(OnNodeNameEditEntered), GDUtils.GDParams(stateNode));
+            stateNode.Connect("gui_input", this, nameof(OnStateNodeGuiInput), GDUtils.GDParams(stateNode));
+
+            stateLayer.StateMachine.AddState(stateNode.State);
+            CheckHasEntry();
+            CheckHasExit();
+            OnEdited();
+        }
+
+        public override void OnNodeRemoved(FlowChartLayer layer, Control node)
+        {
+            var path = GD.Str(pathViewer.GetCwd(), "/", node.Name);
+            var layerToRemove = GetLayer(path);
+            if (layerToRemove != null)
+            {
+                layerToRemove.GetParent().RemoveChild(layerToRemove);
+                layerToRemove.QueueFree();
+            }
+            //var result = layer.StateMachine.RemoveState(nodeName);
+            CheckHasEntry();
+            CheckHasExit();
+            OnEdited();
+            //return result;
+
+        }
+
+        public override void OnNodeConnected(FlowChartLayer layer, string from, string to)
+        {
+            if (!(layer is StateMachineEditorLayer stateLayer)) return;
+
+            if (reconnectingConnection != null)
+            {
+                // Reconnection will trigger _onNodeConnected after _onNodeReconnectEnd/_on_node_reconnect_failed
+                if (reconnectingConnection.FromNode.Name == from && reconnectingConnection.ToNode.Name == to)
                 {
-                    var layer = CreateLayer(node);
-                    SelectLayer(layer);
-                    // In case where, "from" state is nested yet !an exit state,
-                    // while "to" state is on different level, then jump to destination layer directly.
-                    // This happens when StateMachinePlayer transit to state that existing in the stack,
-                    // which trigger StackPlayer.Reset() && cause multiple states removed from stack within one frame
+                    reconnectingConnection = null;
+                    return;
                 }
             }
-        }
-        else if (fromDir.IsNested() && !from_dir.IsExit())
-        {
-            if (toDir._dirs.Size() != fromDir._dirs.Size())
-            {
-                toDir.Goto(toDir.GetEndIndex());
-                var n = toDir.Back();
-                if (!n)
-                {
-                    n = "root";
-                }
-                var layer = GetLayer(n);
-                pathViewer.SelectDir(layer.name);
-                SelectLayer(layer);
 
+            if (stateLayer.StateMachine.GetTransition(from, to) != null)
+                return; // Transition already exists as it is loaded from file
+
+            var line = stateLayer.GetConnection(from, to).Line as TransitionLine;
+            var newTransition = new Transition(from, to);
+            line.Transition = newTransition;
+            stateLayer.StateMachine.AddTransition(newTransition);
+            ClearSelection();
+            Select(line);
+            OnEdited();
+
+        }
+
+        public override void OnNodeDisconnected(FlowChartLayer layer, string from, string to)
+        {
+            if (!(layer is StateMachineEditorLayer stateLayer)) return;
+            stateLayer.StateMachine.RemoveTransition(from, to);
+            OnEdited();
+
+        }
+
+        public override void OnNodeReconnectBegin(FlowChartLayer layer, string from, string to)
+        {
+            if (!(layer is StateMachineEditorLayer stateLayer)) return;
+            reconnectingConnection = stateLayer.GetConnection(from, to);
+            stateLayer.StateMachine.RemoveTransition(from, to);
+        }
+
+        public override void OnNodeReconnectEnd(FlowChartLayer layer, string from, string to)
+        {
+            if (!(layer is StateMachineEditorLayer stateLayer)) return;
+            var transition = (reconnectingConnection.Line as TransitionLine).Transition;
+            transition.To = to;
+            stateLayer.StateMachine.AddTransition(transition);
+            ClearSelection();
+            Select(reconnectingConnection.Line);
+        }
+
+        public override void OnNodeReconnectFailed(FlowChartLayer layer, string from, string to)
+        {
+            if (!(layer is StateMachineEditorLayer stateLayer)) return;
+            var transition = (reconnectingConnection.Line as TransitionLine).Transition;
+            stateLayer.StateMachine.AddTransition(transition);
+            ClearSelection();
+            Select(reconnectingConnection.Line);
+
+        }
+
+        public override bool _RequestConnectFrom(FlowChartLayer layer, string from)
+        {
+            if (!(layer is StateMachineEditorLayer stateLayer)) return false;
+            if (from == State.ExitState)
+                return false;
+            return true;
+
+        }
+
+        public override bool _RequestConnectTo(FlowChartLayer layer, string to)
+        {
+            if (!(layer is StateMachineEditorLayer stateLayer)) return false;
+            if (to == State.EntryState)
+                return false;
+            return true;
+
+        }
+
+        public override void OnDuplicated(FlowChartLayer layer, GDC.Array<Control> oldNodes, GDC.Array<Control> newNodes)
+        {
+            if (!(layer is StateMachineEditorLayer stateLayer)) return;
+            // Duplicate condition as well
+            for (int i = 0; i < oldNodes.Count; i++)
+            {
+                var fromNode = oldNodes[i];
+                foreach (var connectionPair in GetConnectionList())
+                {
+                    if (fromNode.Name == connectionPair.From)
+                    {
+                        for (int j = 0; j < oldNodes.Count; j++)
+                        {
+                            var toNode = oldNodes[j];
+                            if (toNode.Name == connectionPair.To)
+                            {
+                                var oldConnection = stateLayer.GetConnection(connectionPair);
+                                var newConnection = stateLayer.GetConnection(newNodes[i].Name, newNodes[j].Name);
+                                var oldConnectionTransitionLine = oldConnection.Line as TransitionLine;
+                                var newConnectionTransitionLine = newConnection.Line as TransitionLine;
+                                foreach (Condition condition in oldConnectionTransitionLine.Transition.Conditions.Values)
+                                    newConnectionTransitionLine.Transition.AddCondition(condition.Duplicate() as Condition);
+                            }
+                        }
+                    }
+                }
+            }
+            OnEdited();
+        }
+        #endregion
+
+        public void OnNodeNameEditEntered(string newName, StateNode node)
+        {
+            var old = node.State.Name;
+
+            // TODO: Refactor this to not edit name edit directly from the state node (seems like an intrusion of responsibility)
+            if (old == newName)
+                return;
+            if (newName.Contains("/") || newName.Contains("\\")) // No back/forward-slash
+            {
+                GD.PushWarning($"Illegal State Name: / && \\ are !allowed in State Name({newName})");
+                node.NameEdit.Text = old;
+                return;
+            }
+
+            if (currentLayer.StateMachine.ChangeStateName(old, newName))
+            {
+                RenameNode(currentLayer, node.Name, newName);
+                node.Name = newName;
+                // Rename layer as well
+                var path = GD.Str(pathViewer.GetCwd(), "/", node.Name);
+                var layer = GetLayer(path);
+                if (layer == null)
+                    layer.Name = newName;
+
+                // TODO: Don't pull children directly from path viewer, that's path viewer's responsibility
+                foreach (Label child in pathViewer.GetChildren())
+                {
+                    if (child.Text == old)
+                    {
+                        child.Text = newName;
+                        break;
+                    }
+                }
+                OnEdited();
+            }
+            else
+                node.NameEdit.Text = old;
+        }
+
+        public void OnEdited()
+        {
+            unsavedIndicator.Text = "*";
+
+        }
+
+        public void OnRemoteTransited(string from, string to)
+        {
+            var fromDir = new StateDirectory(from);
+            var toDir = new StateDirectory(to);
+
+            var focusedLayer = GetFocusedLayer(from);
+            if (from != null)
+            {
+                if (focusedLayer != null)
+                    focusedLayer.DebugTransitOut(from, to);
+            }
+
+            if (to != null)
+            {
+                if (fromDir.IsNested && fromDir.IsExit)
+                {
+                    if (focusedLayer != null)
+                    {
+                        var path = pathViewer.Back();
+                        SelectLayer(GetLayer(path));
+                    }
+                }
+                else if (toDir.IsNested)
+                {
+                    if (toDir.IsEntry && focusedLayer != null)
+                    {
+                        // Open into next layer
+                        toDir.Goto(toDir.EndIndex);
+                        toDir.Back();
+                        var node = focusedLayer.ContentNodes.GetNodeOrNull<StateNode>(toDir.CurrentEnd);
+                        if (node != null)
+                        {
+                            var layer = CreateLayer(node);
+                            SelectLayer(layer);
+                            // In case where, "from" state is nested yet !an exit state,
+                            // while "to" state is on different level, then jump to destination layer directly.
+                            // This happens when StateMachinePlayer transit to state that existing in the stack,
+                            // which trigger StackPlayer.Reset() && cause multiple states removed from stack within one frame
+                        }
+                    }
+                }
+                else if (fromDir.IsNested && !fromDir.IsExit)
+                {
+                    if (toDir.Dirs.Length != fromDir.Dirs.Length)
+                    {
+                        toDir.Goto(toDir.EndIndex);
+                        var n = toDir.Back();
+                        if (n == null)
+                        {
+                            n = "root";
+                        }
+                        var layer = GetLayer(n);
+                        pathViewer.SelectDir(layer.Name);
+                        SelectLayer(layer);
+
+                    }
+                }
+                focusedLayer = GetFocusedLayer(to);
+                if (focusedLayer == null)
+                    focusedLayer = OpenLayer(to);
+
+                focusedLayer.DebugTransitIn(from, to);
             }
         }
-        focusedLayer = GetFocusedLayer(to);
-        if (!focused_layer)
+
+        /// <summary>
+        /// Return true if current editing StateMachine can be saved, ignore built-in resource
+        /// </summary>
+        /// <returns></returns>
+        public bool CanSave()
         {
-            focusedLayer = OpenLayer(to);
+            if (StateMachine == null)
+                return false;
+
+            var resourcePath = stateMachine.ResourcePath;
+            if (resourcePath.Empty())
+                return false;
+
+            if (resourcePath.Contains(".scn") || resourcePath.Contains(".tscn")) // Built-in resource will be saved by scene
+                return false;
+            return true;
         }
-        focusedLayer.DebugTransitIn(from, to);
 
-        // Return if current editing StateMachine can be saved, ignore built-in resource
+        public void SetCurrentState(string v)
+        {
+            if (currentState != v)
+            {
+                var from = currentState;
+                var to = v;
+                currentState = v;
+                OnRemoteTransited(from, to);
+            }
+        }
     }
-}
-
-public __TYPE CanSave()
-{
-    if (!state_machine)
-    {
-        return false;
-    }
-    var resourcePath = stateMachine.resource_path;
-    if (resourcePath.Empty())
-    {
-        return false;
-    }
-    if (".scn" in resourcePath || ".tscn" in resourcePath) // Built-in resource will be saved by scene
-		{
-    return false;
-}
-return true;
-	
-	}
-
-public void SetCurrentState(__TYPE v)
-{
-    if (_currentState != v)
-    {
-        var from = _currentState;
-        var to = v;
-        _currentState = v;
-        _OnRemoteTransited(from, to);
-
-
-    }
-}
-	
-	
-	
-}
 }

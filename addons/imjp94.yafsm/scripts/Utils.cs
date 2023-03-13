@@ -27,7 +27,8 @@ namespace GodotRollbackNetcode.StateMachine
         /// <returns></returns>
         public static bool TryReleaseFocusWithMouseClick(this Control control, InputEvent inputEvent)
         {
-            if (inputEvent is InputEventMouseButton mouseButtonEvent) && control.GetFocusOwner() == control && mouseButtonEvent.Pressed) {
+            if (inputEvent is InputEventMouseButton mouseButtonEvent && control.GetFocusOwner() == control && mouseButtonEvent.Pressed)
+            {
                 var localEvent = control.MakeInputLocal(inputEvent) as InputEventMouseButton;
                 if (!control.GetRect().HasPoint(localEvent.Position))
                 {

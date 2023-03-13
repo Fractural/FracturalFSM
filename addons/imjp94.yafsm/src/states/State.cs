@@ -40,7 +40,7 @@ namespace GodotRollbackNetcode.StateMachine
         /// <summary> 
         /// Position in FlowChart stored as meta, for editor only
         /// </summary>
-        public Vector2 graphOffset
+        public Vector2 GraphOffset
         {
             get => HasMeta(MetaGraphOffset) ? this.GetMeta<Vector2>(MetaGraphOffset) : Vector2.Zero;
             set => SetMeta(MetaGraphOffset, value);

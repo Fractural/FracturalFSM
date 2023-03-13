@@ -85,6 +85,7 @@ namespace GodotRollbackNetcode.StateMachine
         public override string Current => base.Current != null ? base.Current : "";
         public override string Previous => base.Previous != null ? base.Previous : "";
 
+        // TODO: Figure out if duplicating is necessary
         private GDC.Dictionary parameters; // Parameters to be passed to condition
         /// <summary>
         /// Get duplicate of whole parameter dictionary
@@ -93,6 +94,7 @@ namespace GodotRollbackNetcode.StateMachine
         public GDC.Dictionary Parameters => parameters.Duplicate();
 
         private GDC.Dictionary localParameters;
+        public GDC.Dictionary LocalParamters => localParameters.Duplicate();
 
         private bool isStarted = false;
         private bool isUpdateLocked = true;

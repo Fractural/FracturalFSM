@@ -49,8 +49,6 @@ namespace GodotRollbackNetcode.StateMachine
             else
             {
                 DrawStyleBox(GetStylebox("normal", "FlowChartLine"), new Rect2(Vector2.Zero, RectSize));
-
-
             }
             DrawTexture(arrow, Vector2.Zero - arrow.GetSize() / 2 + RectSize / 2, tint);
 
@@ -76,16 +74,14 @@ namespace GodotRollbackNetcode.StateMachine
 
             // Clip line with provided Rect2 array
             GDC.Array clipped = new GDC.Array() { new GDC.Array() { from, to } };
-            Vector2 lineFrom = from;
-            Vector2 lineTo = to;
             if (clipRects != null)
                 foreach (var clipRect in clipRects)
                 {
                     if (clipped.Count == 0)
                         break;
 
-                    lineFrom = clipped.ElementAt<Vector2>(0, 0);
-                    lineTo = clipped.ElementAt<Vector2>(0, 1);
+                    Vector2 lineFrom = clipped.ElementAt<Vector2>(0, 0);
+                    Vector2 lineTo = clipped.ElementAt<Vector2>(0, 1);
                     clipped = Geometry.ClipPolylineWithPolygon2d(
                         new[] { lineFrom, lineTo },
                         new[]{
@@ -101,13 +97,13 @@ namespace GodotRollbackNetcode.StateMachine
                 from = clipped.ElementAt<Vector2>(0, 0);
                 to = clipped.ElementAt<Vector2>(0, 1);
             }
-            else // Line is totally overlapped
+            else
             {
+                // Line is totally overlapped
                 from = center;
                 to = center + dir * 0.1f;
-
-                // Extends line by 2px to minimise ugly seam	
             }
+            // Extends line by 2px to minimise ugly seam	
             from -= dir * 2f;
             to += dir * 2f;
 
