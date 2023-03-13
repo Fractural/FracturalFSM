@@ -1,152 +1,118 @@
 
 using System;
 using Godot;
-using Dictionary = Godot.Collections.Dictionary;
-using Array = Godot.Collections.Array;
+using Fractural.GodotCodeGenerator.Attributes;
 
-[Tool]
-public class StateNode : "res://addons/imjp94.yafsm/scenes/flowchart/FlowChartNode.gd"
+namespace GodotRollbackNetcode.StateMachine
 {
-
-    public const var State = GD.Load("../../src/states/State.gd");
-    public const var StateMachine = GD.Load("../../src/states/StateMachine.gd");
-
-    [Signal] delegate void NameEditEntered(newName);// Emits when focused exit || Enter pressed
-
-    public onready var nameEdit = GetNode("MarginContainer/NameEdit");
-
-    public __TYPE undoRedo;
-
-    var state { set { SetState(value); } }
-
-
-    public void _Init()
+    [Tool]
+    public partial class StateNode : FlowChartNode
     {
-        SetState(State.new("State"));
+        [Signal] public delegate void NameEditEntered(string newName); // Emits when focused exit || Enter pressed
 
-    }
+        [OnReadyGet("MarginContainer/NameEdit")]
+        private LineEdit nameEdit;
+        private UndoRedo undoRedo;
 
-    public void _Ready()
-    {
-        nameEdit.text = "State";
-        nameEdit.Connect("focus_exited", this, "_on_NameEdit_focus_exited");
-        nameEdit.Connect("text_entered", this, "_on_NameEdit_text_entered");
-        SetProcessInput(false);// _input only required when nameEdit enabled to check mouse click outside
-
-    }
-
-    public void _Draw()
-    {
-        if (state is StateMachine)
+        private State state;
+        public State State
         {
-            if (selected)
+            get => state;
+            set
             {
-                DrawStyleBox(GetStylebox("nested_focus", "StateNode"), new Rect2(Vector2.Zero, rectSize));
+                if (state != value)
+                {
+                    state = value;
+                    _OnStateChanged(value);
+                }
+            }
+        }
+
+        public void Construct(UndoRedo undoRedo)
+        {
+            State = new State("State");
+            this.undoRedo = undoRedo;
+        }
+
+        [OnReady]
+        public void RealReady()
+        {
+            nameEdit.Text = "State";
+            nameEdit.Connect("focus_exited", this, nameof(OnNameEditFocusExited));
+            nameEdit.Connect("text_entered", this, nameof(OnNameEditTextEntered));
+            SetProcessInput(false);// _Input only required when nameEdit enabled to check mouse click outside
+        }
+
+        public override void _Draw()
+        {
+            if (state is StateMachine)
+            {
+                if (Selected)
+                    DrawStyleBox(GetStylebox("nested_focus", "StateNode"), new Rect2(Vector2.Zero, RectSize));
+                else
+                    DrawStyleBox(GetStylebox("nested_normal", "StateNode"), new Rect2(Vector2.Zero, RectSize));
+            }
+            else
+                base._Draw();
+        }
+
+        public override void _Input(InputEvent inputEvent)
+        {
+            nameEdit.TryReleaseFocusWithMouseClick(inputEvent);
+        }
+
+        public void EnableNameEdit(bool enabled)
+        {
+            if (enabled)
+            {
+                SetProcessInput(true);
+                nameEdit.Editable = true;
+                nameEdit.SelectingEnabled = true;
+                nameEdit.MouseFilter = MouseFilterEnum.Pass;
+                MouseDefaultCursorShape = CursorShape.Ibeam;
+                nameEdit.GrabFocus();
             }
             else
             {
-                DrawStyleBox(GetStylebox("nested_normal", "StateNode"), new Rect2(Vector2.Zero, rectSize));
+                SetProcessInput(false);
+                nameEdit.Editable = false;
+                nameEdit.SelectingEnabled = false;
+                nameEdit.MouseFilter = MouseFilterEnum.Ignore;
+                MouseDefaultCursorShape = CursorShape.Arrow;
+                nameEdit.ReleaseFocus();
+
             }
         }
-        else
-        {
-            base._Draw();
 
+        private void OnStateNameChanged(string newName)
+        {
+            nameEdit.Text = newName;
+            RectSize = new Vector2(0, RectSize.y); // Force reset horizontal size
         }
-    }
 
-    public void _Input(__TYPE event)
-
-    {
-        if (event is InputEventMouseButton)
-
+        private void _OnStateChanged(State newState)
         {
-        if (event.pressed)
-
+            if (state != null)
             {
-        // Detect click outside rect
-        if (GetFocusOwner() == nameEdit)
+                state.Connect(nameof(State.NameChanged), this, nameof(OnStateNameChanged));
+                if (nameEdit != null)
+                    nameEdit.Text = state.Name;
+            }
+        }
+
+        private void OnNameEditFocusExited()
         {
-            var localEvent = MakeInputLocal(event);
-					if(!name_edit.GetRect().HasPoint(localEvent.position))
-					{
-						nameEdit.ReleaseFocus();
-	
-					}
-				}
-			}
-		}
-	}
-	
-	public void EnableNameEdit(__TYPE v)
-{
-    if (v)
-    {
-        SetProcessInput(true);
-        nameEdit.editable = true;
-        nameEdit.selecting_enabled = true;
-        nameEdit.mouse_filter = MOUSEFilterPass;
-        mouseDefaultCursorShape = CURSORIbeam;
-        nameEdit.GrabFocus();
-    }
-    else
-    {
-        SetProcessInput(false);
-        nameEdit.editable = false;
-        nameEdit.selecting_enabled = false;
-        nameEdit.mouse_filter = MOUSEFilterIgnore;
-        mouseDefaultCursorShape = CURSORArrow;
-        nameEdit.ReleaseFocus();
+            EnableNameEdit(false);
+            nameEdit.Deselect();
+            EmitSignal(nameof(NameEditEntered), nameEdit.Text);
 
-    }
-}
+        }
 
-public void _OnStateNameChanged(__TYPE newName)
-{
-    nameEdit.text = newName;
-    rectSize.x = 0;// Force reset horizontal size
-
-}
-
-public void _OnStateChanged(__TYPE newState)
-{
-    if (state)
-    {
-        state.Connect("name_changed", this, "_on_state_name_changed");
-        if (nameEdit)
+        private void OnNameEditTextEntered(string newText)
         {
-            nameEdit.text = state.name;
+            EnableNameEdit(false);
+            EmitSignal(nameof(NameEditEntered), newText);
 
         }
     }
-}
-
-public void _OnNameEditFocusExited()
-{
-    EnableNameEdit(false);
-    nameEdit.Deselect();
-    EmitSignal("name_edit_entered", nameEdit.text);
-
-}
-
-public void _OnNameEditTextEntered(__TYPE newText)
-{
-    EnableNameEdit(false);
-    EmitSignal("name_edit_entered", newText);
-
-}
-
-public void SetState(__TYPE s)
-{
-    if (state != s)
-    {
-        state = s;
-        _OnStateChanged(s);
-
-
-    }
-}
-	
-	
-	
 }

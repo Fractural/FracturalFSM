@@ -2,20 +2,20 @@
 using System;
 using System.Collections;
 using System.Collections.Generic;
+using Fractural.Utils;
 using Godot;
 using GDC = Godot.Collections;
 
 namespace GodotRollbackNetcode.StateMachine
 {
-
     [Tool]
     public class FlowChart : Control
     {
-        [Signal] delegate void ConnectionEstablished(string from, string to, FlowChartLine line);// When a connection established
-        [Signal] delegate void ConnectionBroken(string from, string to, FlowChartLine line);// When a connection broken
-        [Signal] delegate void NodeSelected(FlowChartNode node);// When a node selected
-        [Signal] delegate void NodeDeselected(FlowChartNode node);// When a node deselected
-        [Signal] delegate void Dragged(FlowChartNode node, float distance);// When a node dragged
+        [Signal] public delegate void ConnectionEstablished(string from, string to, FlowChartLine line);// When a connection established
+        [Signal] public delegate void ConnectionBroken(string from, string to, FlowChartLine line);// When a connection broken
+        [Signal] public delegate void NodeSelected(FlowChartNode node);// When a node selected
+        [Signal] public delegate void NodeDeselected(FlowChartNode node);// When a node deselected
+        [Signal] public delegate void Dragged(FlowChartNode node, float distance);// When a node dragged
 
         /// <summary>
         /// Margin of content from edge of FlowChart
@@ -65,26 +65,28 @@ namespace GodotRollbackNetcode.StateMachine
 
         public SpinBox snapAmount = new SpinBox();
 
-
         public bool isSnapping = true;
         public bool canGuiSelectNode = true;
         public bool canGuiDeleteNode = true;
         public bool canGuiConnectNode = true;
 
+        private PackedScene flowChartNodePrefab = GD.Load<PackedScene>("res://addons/imjp94.yafsm/scenes/flowchart/FlowChartNode.tscn");
+        private PackedScene flowChartLinePrefab = GD.Load<PackedScene>("res://addons/imjp94.yafsm/scenes/flowchart/FlowChartLine.tscn");
+
         private bool _isConnecting = false;
-        private bool _currentConnection;
+        private Connection _currentConnection;
         private bool _isDragging = false;
         private bool _isDraggingNode = false;
         private Vector2 _dragStartPos = Vector2.Zero;
         private Vector2 _dragEndPos = Vector2.Zero;
-        private GDC.Array _dragOrigins = new GDC.Array() { };
-        private GDC.Array _selection = new GDC.Array() { };
-        private GDC.Array _copyingNodes = new GDC.Array() { };
+        private GDC.Array<Vector2> _dragOrigins = new GDC.Array<Vector2>() { };
+        private GDC.Array<Control> _selection = new GDC.Array<Control>() { };
+        private GDC.Array<Control> _copyingNodes = new GDC.Array<Control>() { };
 
-        public StyleBoxFlat selectionStylebox = new StyleBoxFlat();
+        private StyleBoxFlat selectionStylebox = new StyleBoxFlat();
 
-        public Color gridMajorColor = new Color(1, 1, 1, 0.15f);
-        public Color gridMinorColor = new Color(1, 1, 1, 0.07f);
+        private Color gridMajorColor = new Color(1, 1, 1, 0.15f);
+        private Color gridMinorColor = new Color(1, 1, 1, 0.07f);
 
 
         public FlowChart()
@@ -230,7 +232,7 @@ namespace GodotRollbackNetcode.StateMachine
         {
             // Update scrolls
             var contentRect = GetScrollRect();
-            content.RectPivotOffset = GetScrollRect().Size / 2.0;// Scale from center
+            content.RectPivotOffset = GetScrollRect().Size / 2f;// Scale from center
             if (!GetRect().Encloses(contentRect))
             {
 
@@ -311,7 +313,7 @@ namespace GodotRollbackNetcode.StateMachine
                     // for i in connectionList.Size():
                     // 	var connection = _connections[connectionList[i].from][connectionList[i].to];
                     // 	# Line's offset along its down-vector
-                    // 	var lineLocalUpOffset = connection.line.RectPosition - connection.line.GetTransform().Xform(Vector2.UP * connection.offset);
+                    // 	var lineLocalUpOffset = connection.Line.RectPosition - connection.Line.GetTransform().Xform(Vector2.UP * connection.Offset);
                     // 	var fromPos = content.GetTransform().Xform(connection.GetFromPos() + lineLocalUpOffset);
                     // 	var toPos = content.GetTransform().Xform(connection.GetToPos() + lineLocalUpOffset);
                     // 	DrawLine(fromPos, toPos, Color.yellow)
@@ -345,9 +347,9 @@ namespace GodotRollbackNetcode.StateMachine
                                 else if (node is FlowChartNode flowChartNode)
                                 {
                                     RemoveNode(currentLayer, node.Name);
-                                    foreach ((string from, string to) connectionPair in currentLayer.GetConnectionList())
-                                        if (connectionPair.from == node.Name || connectionPair.to == node.Name)
-                                            DisconnectNode(currentLayer, connectionPair.from, connectionPair.to).QueueFree();
+                                    foreach (var connectionPair in currentLayer.GetConnectionList())
+                                        if (connectionPair.From == node.Name || connectionPair.To == node.Name)
+                                            DisconnectNode(currentLayer, connectionPair.From, connectionPair.To).QueueFree();
                                 }
                             }
                             AcceptEvent();
@@ -397,59 +399,63 @@ namespace GodotRollbackNetcode.StateMachine
                             if (_isConnecting)
                             {
                                 // Connecting
-                                if (_currentConnection)
+                                if (_currentConnection != null)
                                 {
                                     var pos = ContentPosition(GetLocalMousePosition());
-                                    GDC.Array clipRects = new GDC.Array() { _currentConnection.FromNode.GetRect() };
+                                    GDC.Array<Rect2> clipRects = new GDC.Array<Rect2>() { _currentConnection.FromNode.GetRect() };
                                     // Snapping connecting line
-                                    foreach (var i in currentLayer.ContentNodes.GetChildCount())
+                                    int currentLayerChildCount = currentLayer.ContentNodes.GetChildCount();
+                                    for (int i = 0; i < currentLayerChildCount; i++)
                                     {
                                         var child = currentLayer.ContentNodes.GetChild(currentLayer.ContentNodes.GetChildCount() - 1 - i);// Inverse order to check from top to bottom of canvas
-                                        if (child is FlowChartNode && child.name != _currentConnection.FromNode.name)
+                                        if (child is FlowChartNode flowChartNode && child.Name != _currentConnection.FromNode.Name)
                                         {
-                                            if (_RequestConnectTo(currentLayer, child.name))
+                                            if (_RequestConnectTo(currentLayer, flowChartNode.Name))
                                             {
-                                                if (child.GetRect().HasPoint(pos))
+                                                if (flowChartNode.GetRect().HasPoint(pos))
                                                 {
-                                                    pos = child.RectPosition + child.rect_Size / 2;
-                                                    clipRects.Append(child.GetRect());
+                                                    pos = flowChartNode.RectPosition + flowChartNode.RectSize / 2;
+                                                    clipRects.Add(flowChartNode.GetRect());
                                                     break;
                                                 }
                                             }
                                         }
                                     }
-                                    _currentConnection.line.Join(_currentConnection.GetFromPos(), pos, Vector2.Zero, clipRects);
+                                    _currentConnection.Line.Join(_currentConnection.GetFromPos(), pos, Vector2.Zero, clipRects);
                                 }
                             }
                             else if (_isDraggingNode)
                             {
                                 // Dragging nodes
-                                var dragged = ContentPosition(_dragEndPos) - ContentPosition(_dragStartPos);
-                                foreach (var i in _selection.Size())
+                                var dragDelta = ContentPosition(_dragEndPos) - ContentPosition(_dragStartPos);
+                                for (int i = 0; i < _selection.Count; i++)
                                 {
                                     var selected = _selection[i];
-                                    if (!(selected is FlowChartNode))
-                                    {
+                                    if (!(selected is FlowChartNode selectedFlowChartNode))
                                         continue;
-                                    }
-                                    selected.RectPosition = (_dragOrigins[i] + selected.rect_Size / 2.0 + dragged);
-                                    selected.modulate.a = 0.3;
+
+                                    selectedFlowChartNode.RectPosition = _dragOrigins[i] + selectedFlowChartNode.RectSize / 2f + dragDelta;
+
+                                    var color = selectedFlowChartNode.Modulate;
+                                    color.a = 0.3f;
+                                    selectedFlowChartNode.Modulate = color;
+
                                     if (isSnapping)
                                     {
-                                        selected.RectPosition = selected.RectPosition.Snapped(Vector2.ONE * snap);
+                                        selectedFlowChartNode.RectPosition = selectedFlowChartNode.RectPosition.Snapped(Vector2.One * snap);
                                     }
-                                    selected.RectPosition -= selected.rect_Size / 2.0;
-                                    _OnNodeDragged(currentLayer, selected, dragged);
-                                    EmitSignal("dragged", selected, dragged);
+                                    selectedFlowChartNode.RectPosition -= selectedFlowChartNode.RectSize / 2f;
+                                    _OnNodeDragged(currentLayer, selected, dragDelta);
+                                    EmitSignal(nameof(Dragged), selected, dragDelta);
                                     // Update connection pos
-                                    foreach (var from in currentLayer.Connections)
+                                    foreach (string from in currentLayer.Connections)
                                     {
-                                        var connectionsFrom = currentLayer.Connections[from];
-                                        foreach (var to in connectionsFrom)
+                                        var connectionsFrom = currentLayer.Connections.Get<GDC.Dictionary>(from);
+                                        foreach (string to in connectionsFrom)
                                         {
-                                            if (from == selected.name || to == selected.name)
+                                            if (from == selected.Name || to == selected.Name)
                                             {
-                                                var connection = currentLayer.Connections[from][to];
+                                                var connection = connectionsFrom.Get<Connection>(to);
                                                 connection.Join();
                                             }
                                         }
@@ -463,64 +469,61 @@ namespace GodotRollbackNetcode.StateMachine
                         break;
                 }
             }
-            if (inputEvent is InputEventMouseButton)
-
+            if (inputEvent is InputEventMouseButton mouseButtonEvent)
             {
-                switch (inputEvent.ButtonIndex)
+                switch (mouseButtonEvent.ButtonIndex)
                 {
                     case (int)ButtonList.Middle:
                         // Reset zoom
-                        if (inputEvent.doubleclick)
+                        if (mouseButtonEvent.Doubleclick)
                         {
-                            Zoom = 1.0);
+                            Zoom = 1.0f;
                             Update();
                         }
                         break;
                     case (int)ButtonList.WheelUp:
                         // Zoom in
-                        Zoom = zoom + 0.01);
+                        Zoom = zoom + 0.01f;
                         Update();
                         break;
                     case (int)ButtonList.WheelDown:
                         // Zoom out
-                        Zoom = zoom - 0.01);
+                        Zoom = zoom - 0.01f;
                         Update();
                         break;
                     case (int)ButtonList.Left:
                         // Hit detection
-                        var hitNode;
-                        foreach (var i in currentLayer.ContentNodes.GetChildCount())
+                        Control hitNode = null;
+                        int currentLayerChildCount = currentLayer.ContentNodes.GetChildCount();
+                        for (int i = 0; i < currentLayerChildCount; i++)
                         {
                             var child = currentLayer.ContentNodes.GetChild(currentLayer.ContentNodes.GetChildCount() - 1 - i);// Inverse order to check from top to bottom of canvas
-                            if (child is FlowChartNode)
+                            if (child is FlowChartNode flowChartNode &&
+                                flowChartNode.GetRect().HasPoint(ContentPosition(mouseButtonEvent.Position)))
                             {
-                                if (child.GetRect().HasPoint(ContentPosition(inputEvent.Position)))
-                                {
-                                    hitNode = child;
-                                    break;
-                                }
+                                hitNode = flowChartNode;
+                                break;
                             }
                         }
-                        if (!hit_node)
+
+                        if (hitNode == null)
                         {
                             // Test Line
                             // Refer https://github.com/godotengine/godot/blob/master/editor/plugins/animation_state_machine_editor.cpp#L187
                             int closest = -1;
-                            int closestD = 1e20
+                            float closestD = 1e20f;
 
-
-
-                        var connectionList = GetConnectionList();
-                            foreach (var i in connectionList.Size())
+                            var connectionList = GetConnectionList();
+                            for (int i = 0; i < connectionList.Count; i++)
                             {
-                                var connection = currentLayer.Connections[connectionList[i].from][connectionList[i].to];
+                                var connection = currentLayer.Connections.Get<Connection>($"{connectionList[i].From}{connectionList[i].To}");
                                 // Line's offset along its down-vector
-                                var lineLocalUpOffset = connection.line.RectPosition - connection.line.GetTransform().Xform(Vector2.DOWN * connection.offset);
+                                var lineLocalUpOffset = connection.Line.RectPosition - connection.Line.GetTransform() * (Vector2.Down * connection.Offset);
                                 var fromPos = connection.GetFromPos() + lineLocalUpOffset;
                                 var toPos = connection.GetToPos() + lineLocalUpOffset;
-                                var cp = Geometry.GetClosestPointToSegment2d(ContentPosition(inputEvent.Position), fromPos, toPos);
-                                var d = cp.DistanceTo(ContentPosition(inputEvent.Position));
-                                if (d > connection.line.rect_Size.y * 2)
+                                var cp = Geometry.GetClosestPointToSegment2d(ContentPosition(mouseButtonEvent.Position), fromPos, toPos);
+                                var d = cp.DistanceTo(ContentPosition(mouseButtonEvent.Position));
+                                if (d > connection.Line.RectSize.y * 2)
                                 {
                                     continue;
                                 }
@@ -532,34 +535,33 @@ namespace GodotRollbackNetcode.StateMachine
                             }
                             if (closest >= 0)
                             {
-                                hitNode = currentLayer.Connections[connectionList[closest].from][connectionList[closest].to].line;
-
+                                hitNode = currentLayer.Connections.Get<Connection>($"{connectionList[closest].From}{connectionList[closest].To}").Line;
                             }
                         }
-                        if (inputEvent.Pressed)
+                        if (mouseButtonEvent.Pressed)
                         {
-                            if (!(hitNode in _selection) && !inputEvent.shift)
-						{
+                            if (!_selection.Contains(hitNode) && !mouseButtonEvent.Shift)
+                            {
                                 // Click on empty space
                                 ClearSelection();
                             }
-                            if (hitNode)
+                            if (hitNode != null)
                             {
                                 // Click on Node(can be a line)
                                 _isDraggingNode = true;
                                 if (hitNode is FlowChartLine)
                                 {
-                                    currentLayer.content_lines.MoveChild(hitNode, currentLayer.content_lines.GetChildCount() - 1);// Raise selected line to top
-                                    if (inputEvent.shift && canGuiConnectNode)
+                                    currentLayer.ContentLines.MoveChild(hitNode, currentLayer.ContentLines.GetChildCount() - 1);// Raise selected line to top
+                                    if (mouseButtonEvent.Shift && canGuiConnectNode)
                                     {
                                         // Reconnection Start
-                                        foreach (var from in currentLayer._connections.Keys())
+                                        foreach (string from in currentLayer.Connections.Keys)
                                         {
-                                            var fromConnections = currentLayer.Connections[from];
-                                            foreach (var to in fromConnections.Keys())
+                                            var fromConnections = currentLayer.Connections.Get<GDC.Dictionary>(from);
+                                            foreach (string to in fromConnections.Keys)
                                             {
-                                                var connection = fromConnections[to];
-                                                if (connection.line == hitNode)
+                                                var connection = fromConnections.Get<Connection>(to);
+                                                if (connection.Line == hitNode)
                                                 {
                                                     _isConnecting = true;
                                                     _isDraggingNode = false;
@@ -571,24 +573,22 @@ namespace GodotRollbackNetcode.StateMachine
                                         }
                                     }
                                 }
-                                if (hitNode is FlowChartNode)
+                                if (hitNode is FlowChartNode flowChartNode)
                                 {
-                                    currentLayer.ContentNodes.MoveChild(hitNode, currentLayer.ContentNodes.GetChildCount() - 1);// Raise selected node to top
-                                    if (inputEvent.shift && canGuiConnectNode)
+                                    currentLayer.ContentNodes.MoveChild(hitNode, currentLayer.ContentNodes.GetChildCount() - 1); // Raise selected node to top
+                                    if (mouseButtonEvent.Shift && canGuiConnectNode)
                                     {
                                         // Connection start
-                                        if (_RequestConnectFrom(currentLayer, hitNode.name))
+                                        if (_RequestConnectFrom(currentLayer, hitNode.Name))
                                         {
                                             _isConnecting = true;
                                             _isDraggingNode = false;
                                             var line = CreateLineInstance();
-                                            var connection = Connection.new(line, hitNode, null)
+                                            var connection = new Connection(line, flowChartNode, null);
 
-
-
-                                        currentLayer._ConnectNode(connection);
+                                            currentLayer.AfterConnectNode(connection);
                                             _currentConnection = connection;
-                                            _currentConnection.line.Join(_currentConnection.GetFromPos(), ContentPosition(inputEvent.Position));
+                                            _currentConnection.Line.Join(_currentConnection.GetFromPos(), ContentPosition(mouseButtonEvent.Position));
                                         }
                                     }
                                     AcceptEvent();
@@ -609,60 +609,55 @@ namespace GodotRollbackNetcode.StateMachine
                             {
                                 // Drag start
                                 _isDragging = true;
-                                _dragStartPos = inputEvent.Position;
-                                _dragEndPos = inputEvent.Position;
+                                _dragStartPos = mouseButtonEvent.Position;
+                                _dragEndPos = mouseButtonEvent.Position;
                             }
                         }
-
                         else
                         {
                             var wasConnecting = _isConnecting;
                             var wasDraggingNode = _isDraggingNode;
-                            if (_currentConnection)
+                            if (_currentConnection != null)
                             {
                                 // Connection end
-                                var from = _currentConnection.FromNode.name;
-                                var to = hitNode ? hitNode.name : null
+                                var from = _currentConnection.FromNode.Name;
+                                var to = hitNode != null ? hitNode.Name : null;
 
 
-                            if (hitNode is FlowChartNode && _RequestConnectTo(currentLayer, to) && from != to)
+                                if (hitNode is FlowChartNode flowChartNode && _RequestConnectTo(currentLayer, to) && from != to)
                                 {
                                     // Connection success
-                                    var line;
-                                    if (_currentConnection.to_node)
+                                    FlowChartLine line;
+                                    if (_currentConnection.ToNode != null)
                                     {
                                         // Reconnection
-                                        line = DisconnectNode(currentLayer, from, _currentConnection.to_node.name);
-                                        _currentConnection.to_node = hitNode;
+                                        line = DisconnectNode(currentLayer, from, _currentConnection.ToNode.Name);
+                                        _currentConnection.ToNode = flowChartNode;
                                         _OnNodeReconnectEnd(currentLayer, from, to);
                                         ConnectNode(currentLayer, from, to, line);
                                     }
                                     else
                                     {
                                         // New Connection
-                                        currentLayer.content_lines.RemoveChild(_currentConnection.line);
-                                        line = _currentConnection.line;
-                                        _currentConnection.to_node = hitNode;
+                                        currentLayer.ContentLines.RemoveChild(_currentConnection.Line);
+                                        line = _currentConnection.Line;
+                                        _currentConnection.ToNode = flowChartNode;
                                         ConnectNode(currentLayer, from, to, line);
                                     }
                                 }
                                 else
                                 {
                                     // Connection failed
-                                    if (_currentConnection.to_node)
+                                    if (_currentConnection.ToNode != null)
                                     {
                                         // Reconnection
-                                        _currentConnection.
-
-
-
-                                            ();
-                                        _OnNodeReconnectFailed(currentLayer, from, name);
+                                        _currentConnection.Join();
+                                        _OnNodeReconnectFailed(currentLayer, from, Name);
                                     }
                                     else
                                     {
                                         // New Connection
-                                        _currentConnection.line.QueueFree();
+                                        _currentConnection.Line.QueueFree();
                                         _OnNodeConnectFailed(currentLayer, from);
                                     }
                                 }
@@ -680,46 +675,45 @@ namespace GodotRollbackNetcode.StateMachine
                                 {
                                     var selectionBoxRect = GetSelectionBoxRect();
                                     // Select node
-                                    foreach (var node in currentLayer.ContentNodes.GetChildren())
+                                    foreach (Control node in currentLayer.ContentNodes.GetChildren())
                                     {
-                                        var rect = GetTransform().Xform(content.GetTransform().Xform(node.GetRect()));
+                                        var rect = GetTransform() * (content.GetTransform() * node.GetRect());
                                         if (selectionBoxRect.Intersects(rect))
                                         {
                                             if (node is FlowChartNode)
                                             {
                                                 Select(node);
-                                                // Select line
                                             }
                                         }
                                     }
+                                    // Select line
                                     var connectionList = GetConnectionList();
-                                    foreach (var i in connectionList.Size())
+                                    for (int i = 0; i < connectionList.Count; i++)
                                     {
-                                        var connection = currentLayer.Connections[connectionList[i].from][connectionList[i].to];
+                                        var connection = currentLayer.Connections.Get<Connection>($"{connectionList[i].From}.{connectionList[i].To}");
                                         // Line's offset along its down-vector
-                                        var lineLocalUpOffset = connection.line.RectPosition - connection.line.GetTransform().Xform(Vector2.UP * connection.offset);
-                                        var fromPos = content.GetTransform().Xform(connection.GetFromPos() + lineLocalUpOffset);
-                                        var toPos = content.GetTransform().Xform(connection.GetToPos() + lineLocalUpOffset);
+                                        var lineLocalUpOffset = connection.Line.RectPosition - connection.Line.GetTransform() * (Vector2.Up * connection.Offset);
+                                        var fromPos = content.GetTransform() * (connection.GetFromPos() + lineLocalUpOffset);
+                                        var toPos = content.GetTransform() * (connection.GetToPos() + lineLocalUpOffset);
                                         if (CohenSutherland.LineIntersectRectangle(fromPos, toPos, selectionBoxRect))
-                                        {
-                                            Select(connection.line);
-                                        }
+                                            Select(connection.Line);
                                     }
                                 }
                                 if (wasDraggingNode)
                                 {
                                     // Update _dragOrigins with new Position after dragged
-                                    foreach (var i in _selection.Size())
+                                    for (int i = 0; i < _selection.Count; i++)
                                     {
                                         var selected = _selection[i];
                                         _dragOrigins[i] = selected.RectPosition;
-                                        selected.modulate.a = 1.0;
+                                        var color = selected.Modulate;
+                                        color.a = 1f;
+                                        selected.Modulate = color;
                                     }
                                 }
                                 _dragStartPos = _dragEndPos;
                                 Update();
 
-                                // Get selection box rect
                             }
                         }
                         break;
@@ -727,15 +721,23 @@ namespace GodotRollbackNetcode.StateMachine
             }
         }
 
-        public __TYPE GetSelectionBoxRect()
+        /// <summary>
+        /// Get selection box rect
+        /// </summary>
+        /// <returns></returns>
+        public Rect2 GetSelectionBoxRect()
         {
             Vector2 pos = new Vector2(Mathf.Min(_dragStartPos.x, _dragEndPos.x), Mathf.Min(_dragStartPos.y, _dragEndPos.y));
             var Size = (_dragEndPos - _dragStartPos).Abs();
             return new Rect2(pos, Size);
 
-            // Get required scroll rect base on content
         }
 
+        /// <summary>
+        /// Get required scroll rect base on content
+        /// </summary>
+        /// <param name="layer"></param>
+        /// <returns></returns>
         public Rect2 GetScrollRect(FlowChartLayer layer = null)
         {
             if (layer == null) layer = currentLayer;
@@ -743,317 +745,381 @@ namespace GodotRollbackNetcode.StateMachine
 
         }
 
-        public __TYPE AddLayerTo(__TYPE target)
+        public FlowChartLayer AddLayerTo(Control target)
         {
             var layer = CreateLayerInstance();
             target.AddChild(layer);
             return layer;
-
         }
 
-        public __TYPE GetLayer(__TYPE np)
+        public FlowChartLayer GetLayer(NodePath nodePath)
         {
-            return content.GetNodeOrNull(np);
-
+            return content.GetNodeOrNull<FlowChartLayer>(nodePath);
         }
 
-        public void SelectLayerAt(__TYPE i)
+        public void SelectLayerAt(int i)
         {
-            SelectLayer(content.GetChild(i));
-
+            SelectLayer(content.GetChild<FlowChartLayer>(i));
         }
 
-        public void SelectLayer(__TYPE layer)
+        public void SelectLayer(FlowChartLayer layer)
         {
             var prevLayer = currentLayer;
             _OnLayerDeselected(prevLayer);
             currentLayer = layer;
             _OnLayerSelected(layer);
 
-            // Add node
         }
 
-        public void AddNode(__TYPE layer, __TYPE node)
+        /// <summary>
+        /// Add node
+        /// </summary>
+        /// <param name="layer"></param>
+        /// <param name="node"></param>
+        public void AddNode(FlowChartLayer layer, Node node)
         {
             layer.AddNode(node);
             _OnNodeAdded(layer, node);
-
-            // Remove node
         }
 
-        public void RemoveNode(__TYPE layer, __TYPE nodeName)
+        /// <summary>
+        /// Remove node
+        /// </summary>
+        /// <param name="layer"></param>
+        /// <param name="nodeName"></param>
+        public void RemoveNode(FlowChartLayer layer, string nodeName)
         {
-            var node = layer.ContentNodes.GetNodeOrNull(nodeName);
-            if (node)
+            var node = layer.ContentNodes.GetNodeOrNull<Control>(nodeName);
+            if (node != null)
             {
-                Deselect(node);// Must deselct before remove to make sure _dragOrigins synced with _selections
+                Deselect(node); // Must deselct before remove to make sure _dragOrigins synced with _selections
                 layer.RemoveNode(node);
                 _OnNodeRemoved(layer, nodeName);
-
-                // Called after connection established
             }
         }
 
-        public void _ConnectNode(__TYPE line, __TYPE fromPos, __TYPE toPos)
+        /// <summary>
+        /// Called after connection established
+        /// </summary>
+        /// <param name="line"></param>
+        /// <param name="fromPos"></param>
+        /// <param name="toPos"></param>
+        public void _ConnectNode(FlowChartLine line, Vector2 fromPos, Vector2 toPos)
         {
-
-            // Called after connection broken
         }
 
-        public void _DisconnectNode(__TYPE line)
+        /// <summary>
+        /// Called after connection broken
+        /// </summary>
+        /// <param name="line"></param>
+        public void _DisconnectNode(FlowChartLine line)
         {
-            if (line in _selection)
-		{
+            if (_selection.Contains(line))
                 Deselect(line);
-
-            }
         }
 
-        public __TYPE CreateLayerInstance()
+        /// <summary>
+        /// Return a new layer instance to use.
+        /// </summary>
+        /// <returns></returns>
+        public virtual FlowChartLayer CreateLayerInstance()
         {
-            var layer = new Control()
-
-
-        layer.SetScript(FlowChartLayer);
-            return layer;
-
-            // Return new line instance to use, called when connecting node
+            return new FlowChartLayer();
         }
 
-        public __TYPE CreateLineInstance()
+        /// <summary>
+        /// Return new line instance to use, called when connecting node
+        /// </summary>
+        /// <returns></returns>
+        public virtual FlowChartLine CreateLineInstance()
         {
-            return FlowChartLineScene.Instance();
-
-            // Rename node
+            return flowChartLinePrefab.Instance<FlowChartLine>();
         }
 
-        public void RenameNode(__TYPE layer, __TYPE old, new)
-	{
-    layer.RenameNode(old, new);
-
-    // Connect two nodes with a line
-}
-
-    public void ConnectNode(__TYPE layer, __TYPE from, __TYPE to, __TYPE line = null)
-    {
-        if (!line)
+        /// <summary>
+        /// Rename node
+        /// </summary>
+        /// <param name="layer"></param>
+        /// <param name="oldName"></param>
+        /// <param name=""></param>
+        public virtual void RenameNode(FlowChartLayer layer, string oldName, string newName)
         {
-            line = CreateLineInstance();
+            layer.RenameNode(oldName, newName);
         }
-        line.name = "%s>%s" % [from, to] // "From>To";
 
-        layer.ConnectNode(line, from, to, interconnectionOffset);
-        _OnNodeConnected(layer, from, to);
-        EmitSignal("connection", from, to, line);
-
-        // Break a connection between two node
-    }
-
-    public __TYPE DisconnectNode(__TYPE layer, __TYPE from, __TYPE to)
-    {
-        var line = layer.DisconnectNode(from, to);
-        Deselect(line);// Since line is selectable as well
-        _OnNodeDisconnected(layer, from, to);
-        EmitSignal("disconnection", from, to);
-        return line;
-
-        // Clear all connections
-    }
-
-    public void ClearConnections(__TYPE layer = currentLayer)
-    {
-        layer.ClearConnections();
-
-        // Select a Node(can be a line)
-    }
-
-    public void Select(__TYPE node)
-    {
-        if (node in _selection)
-		{
-            return;
-
-        }
-        _selection.Append(node);
-        node.selected = true;
-        _dragOrigins.Append(node.RectPosition);
-        EmitSignal("node_selected", node);
-
-        // Deselect a node
-    }
-
-    public void Deselect(__TYPE node)
-    {
-        _selection.Erase(node);
-        if (IsInstanceValid(node))
+        /// <summary>
+        /// Connect two nodes with a line
+        /// </summary>
+        /// <param name="layer"></param>
+        /// <param name="from"></param>
+        /// <param name="to"></param>
+        /// <param name="line"></param>
+        public void ConnectNode(FlowChartLayer layer, string from, string to, FlowChartLine line = null)
         {
-            node.selected = false;
-        }
-        _dragOrigins.PopBack();
-        EmitSignal("node_deselected", node);
-    }
-
-    /// <summary>
-    /// Clear all selection
-    /// </summary>
-    public void ClearSelection()
-    {
-        foreach (var node in _selection.Duplicate()) // duplicate _selection GDC.Array as Deselect() edit GDC.Array
-        {
-            if (!node)
+            if (line != null)
             {
-                continue;
+                line = CreateLineInstance();
             }
-            Deselect(node);
+            line.Name = $"{from}>{to}"; // "From>To"
+
+            layer.ConnectNode(line, from, to, interconnectionOffset);
+            _OnNodeConnected(layer, from, to);
+            EmitSignal(nameof(ConnectionEstablished), from, to, line);
+
         }
-        _selection.Clear();
 
-    }
-
-    /// <summary>
-    /// Duplicate given nodes in editor
-    /// </summary>
-    /// <param name="layer"></param>
-    /// <param name="nodes"></param>
-    public void DuplicateNodes(FlowChartLayer layer, IEnumerable<Node> nodes)
-    {
-        ClearSelection();
-        GDC.Array newNodes = new GDC.Array() { };
-        foreach (var i in nodes.Size())
+        /// <summary>
+        /// Break a connection between two node
+        /// </summary>
+        /// <param name="layer"></param>
+        /// <param name="from"></param>
+        /// <param name="to"></param>
+        /// <returns></returns>
+        public FlowChartLine DisconnectNode(FlowChartLayer layer, string from, string to)
         {
-            var node = nodes[i];
-            if (!(node is FlowChartNode))
+            var line = layer.DisconnectNode(from, to);
+            Deselect(line);// Since line is selectable as well
+            _OnNodeDisconnected(layer, from, to);
+            EmitSignal(nameof(ConnectionBroken), from, to);
+            return line;
+        }
+
+        /// <summary>
+        /// Clear all connections
+        /// </summary>
+        /// <param name="layer"></param>
+        public void ClearConnections(FlowChartLayer layer = null)
+        {
+            if (layer == null) layer = currentLayer;
+            layer.ClearConnections();
+        }
+
+        /// <summary>
+        /// Select a Node(can be a line)
+        /// </summary>
+        /// <param name="node"></param>
+        public void Select(Control node)
+        {
+            if (_selection.Contains(node))
+                return;
+            if (!(node is ISelectable selectable))
+                return;
+
+            _selection.Add(node);
+            selectable.Selected = true;
+            _dragOrigins.Add(node.RectPosition);
+            EmitSignal(nameof(NodeSelected), node);
+
+        }
+
+        /// <summary>
+        /// Deselect a node
+        /// </summary>
+        /// <param name="node"></param>
+        public void Deselect(Control node)
+        {
+            _selection.Remove(node);
+            if (IsInstanceValid(node) && node is ISelectable selectable)
             {
-                continue;
+                selectable.Selected = false;
             }
-            var newNode = node.Duplicate(DUPLICATESignals + DUPLICATEScripts);
-            var offset = ContentPosition(GetLocalMousePosition()) - ContentPosition(_dragEndPos);
-            newNode.RectPosition = newNode.RectPosition + offset;
-            newNodes.Append(newNode)
-
-
-            AddNode(layer, newNode);
-            Select(newNode);
-            // Duplicate connection within selection
+            _dragOrigins.PopBack();
+            EmitSignal(nameof(NodeDeselected), node);
         }
-        foreach (var i in nodes.Size())
+
+        /// <summary>
+        /// Clear all selection
+        /// </summary>
+        public void ClearSelection()
         {
-            var fromNode = nodes[i];
-            foreach (var connectionPair in GetConnectionList())
+            foreach (var node in _selection.Duplicate()) // duplicate _selection GDC.Array as Deselect() edit GDC.Array
             {
-                if (fromNode.name == connectionPair.from)
+                if (node == null)
+                    continue;
+
+                Deselect(node);
+            }
+            _selection.Clear();
+        }
+
+        /// <summary>
+        /// Duplicate given nodes in editor
+        /// </summary>
+        /// <param name="layer"></param>
+        /// <param name="controlNodes"></param>
+        public void DuplicateNodes(FlowChartLayer layer, GDC.Array<Control> controlNodes)
+        {
+            ClearSelection();
+            GDC.Array<Control> newNodes = new GDC.Array<Control>();
+            for (int i = 0; i < controlNodes.Count; i++)
+            {
+                var node = controlNodes[i];
+                if (!(node is FlowChartNode))
                 {
-                    foreach (var j in nodes.Size())
+                    continue;
+                }
+                var newNode = node.Duplicate((int)(DuplicateFlags.Signals | DuplicateFlags.Scripts)) as Control;
+                var offset = ContentPosition(GetLocalMousePosition()) - ContentPosition(_dragEndPos);
+                newNode.RectPosition = newNode.RectPosition + offset;
+                newNodes.Add(newNode);
+                AddNode(layer, newNode);
+                Select(newNode);
+            }
+
+            // Duplicate connection within selection
+            for (int i = 0; i < controlNodes.Count; i++)
+            {
+                var fromNode = controlNodes[i];
+                foreach (var connectionPair in GetConnectionList())
+                {
+                    if (fromNode.Name == connectionPair.From)
                     {
-                        var toNode = nodes[j];
-                        if (toNode.name == connectionPair.to)
+                        for (int j = 0; i < controlNodes.Count; i++)
                         {
-                            ConnectNode(layer, newNodes[i].name, newNodes[j].name);
+                            var toNode = controlNodes[j];
+                            if (toNode.Name == connectionPair.To)
+                                ConnectNode(layer, newNodes[i].Name, newNodes[j].Name);
                         }
                     }
                 }
             }
+            _OnDuplicated(layer, controlNodes, newNodes);
         }
-        _OnDuplicated(layer, nodes, newNodes);
 
-        // Called after layer Selected(currentLayer changed)
+        #region Virtual Methods
+        /// <summary>
+        /// Called after layer Selected(currentLayer changed)
+        /// </summary>
+        /// <param name="layer"></param>
+        public virtual void _OnLayerSelected(FlowChartLayer layer)
+        {
+
+        }
+
+        public virtual void _OnLayerDeselected(FlowChartLayer layer)
+        {
+
+        }
+
+        /// <summary>
+        /// Called after a node added
+        /// </summary>
+        /// <param name="layer"></param>
+        /// <param name="node"></param>
+        public virtual void _OnNodeAdded(FlowChartLayer layer, Control node)
+        {
+
+        }
+
+        /// <summary>
+        /// Called after a node removed 
+        /// </summary>
+        /// <param name="layer"></param>
+        /// <param name="node"></param>
+        public virtual void _OnNodeRemoved(FlowChartLayer layer, Control node)
+        {
+
+        }
+
+        /// <summary>
+        /// Called when a node dragged
+        /// </summary>
+        /// <param name="layer"></param>
+        /// <param name="node"></param>
+        /// <param name="dragDelta"></param>
+        public virtual void _OnNodeDragged(FlowChartLayer layer, Control node, Vector2 dragDelta)
+        {
+
+
+        }
+
+        /// <summary>
+        /// Called when connection established between two nodes
+        /// </summary>
+        /// <param name="layer"></param>
+        /// <param name="from"></param>
+        /// <param name="to"></param>
+        public virtual void _OnNodeConnected(FlowChartLayer layer, string from, string to)
+        {
+
+        }
+
+        /// <summary>
+        /// Called when connection broken
+        /// </summary>
+        /// <param name="layer"></param>
+        /// <param name="from"></param>
+        /// <param name="to"></param>
+        public virtual void _OnNodeDisconnected(FlowChartLayer layer, string from, string to)
+        {
+
+        }
+
+        public virtual void _OnNodeConnectFailed(FlowChartLayer layer, string from)
+        {
+
+        }
+
+        public virtual void _OnNodeReconnectBegin(FlowChartLayer layer, string from, string to)
+        {
+
+        }
+
+        public virtual void _OnNodeReconnectEnd(FlowChartLayer layer, string from, string to)
+        {
+
+        }
+
+        public virtual void _OnNodeReconnectFailed(FlowChartLayer layer, string from, string to)
+        {
+
+        }
+
+        public virtual bool _RequestConnectFrom(FlowChartLayer layer, string from)
+        {
+            return true;
+
+        }
+
+        public virtual bool _RequestConnectTo(FlowChartLayer layer, string to)
+        {
+            return true;
+
+        }
+
+        /// <summary>
+        /// Called when nodes duplicated
+        /// </summary>
+        /// <param name="layer"></param>
+        /// <param name="oldNodes"></param>
+        /// <param name="newNodes"></param>
+        public virtual void _OnDuplicated(FlowChartLayer layer, GDC.Array<Control> oldNodes, GDC.Array<Control> newNodes)
+        {
+        }
+        #endregion
+
+
+        #region Helper Methods
+        /// <summary>
+        /// Convert Position in FlowChart space to Content(takes translation/scale of content into account)
+        /// </summary>
+        /// <param name="pos"></param>
+        /// <returns></returns>
+        public Vector2 ContentPosition(Vector2 pos)
+        {
+            return (pos - content.RectPosition - content.RectPivotOffset * (Vector2.One - content.RectScale)) * 1f / content.RectScale;
+        }
+
+        /// <summary>
+        /// Return GDC.Array of dictionary of connection as such [new Dictionary(){{"from1", "to1"}}, new Dictionary(){{"from2", "to2"}}]
+        /// </summary>
+        /// <param name="layer"></param>
+        /// <returns></returns>
+        public IReadOnlyList<ConnectionPair> GetConnectionList(FlowChartLayer layer = null)
+        {
+            if (layer == null) layer = currentLayer;
+            return layer.GetConnectionList();
+        }
+        #endregion
     }
-
-    public void _OnLayerSelected(__TYPE layer)
-    {
-
-    }
-
-    public void _OnLayerDeselected(__TYPE layer)
-    {
-
-        // Called after a node added
-    }
-
-    public void _OnNodeAdded(__TYPE layer, __TYPE node)
-    {
-
-        // Called after a node removed
-    }
-
-    public void _OnNodeRemoved(__TYPE layer, __TYPE node)
-    {
-
-        // Called when a node dragged
-    }
-
-    public void _OnNodeDragged(__TYPE layer, __TYPE node, __TYPE dragged)
-    {
-
-        // Called when connection established between two nodes
-    }
-
-    public void _OnNodeConnected(__TYPE layer, __TYPE from, __TYPE to)
-    {
-
-        // Called when connection broken
-    }
-
-    public void _OnNodeDisconnected(__TYPE layer, __TYPE from, __TYPE to)
-    {
-
-    }
-
-    public void _OnNodeConnectFailed(__TYPE layer, __TYPE from)
-    {
-
-    }
-
-    public void _OnNodeReconnectBegin(__TYPE layer, __TYPE from, __TYPE to)
-    {
-
-    }
-
-    public void _OnNodeReconnectEnd(__TYPE layer, __TYPE from, __TYPE to)
-    {
-
-    }
-
-    public void _OnNodeReconnectFailed(__TYPE layer, __TYPE from, __TYPE to)
-    {
-
-    }
-
-    public __TYPE _RequestConnectFrom(__TYPE layer, __TYPE from)
-    {
-        return true;
-
-    }
-
-    public __TYPE _RequestConnectTo(__TYPE layer, __TYPE to)
-    {
-        return true;
-
-        // Called when nodes duplicated
-    }
-
-    public void _OnDuplicated(__TYPE layer, __TYPE oldNodes, __TYPE newNodes)
-    {
-
-        // Convert Position in FlowChart space to Content(takes translation/scale of content into account)
-    }
-
-    public __TYPE ContentPosition(__TYPE pos)
-    {
-        return (pos - content.RectPosition - content.RectPivotOffset * (Vector2.ONE - content.rect_scale)) * 1.0 / content.rect_scale;
-
-        // Return GDC.Array of dictionary of connection as such [new Dictionary(){{"from1", "to1"}}, new Dictionary(){{"from2", "to2"}}]
-    }
-
-    public __TYPE GetConnectionList(__TYPE layer = currentLayer)
-    {
-        return layer.GetConnectionList();
-
-
-    }
-
-
-
-}
-}
 }

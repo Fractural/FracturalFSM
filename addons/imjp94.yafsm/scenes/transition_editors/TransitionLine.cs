@@ -10,12 +10,12 @@ namespace GodotRollbackNetcode.StateMachine
     [Tool]
     public partial class TransitionLine : FlowChartLine
     {
-        [Export] public float uprightAngleRange = 10.0f;
+        [Export] private float uprightAngleRange = 10.0f;
 
         [OnReadyGet("MarginContainer")]
-        public MarginContainer labelMargin;
+        private MarginContainer labelMargin;
         [OnReadyGet("MarginContainer/VBoxContainer")]
-        public VBoxContainer conditionLabelContainer;
+        private VBoxContainer conditionLabelContainer;
 
         public UndoRedo undoRedo;
 
@@ -29,15 +29,21 @@ namespace GodotRollbackNetcode.StateMachine
                 {
                     if (transition != null)
                     {
-                        if (transition.IsConnected(nameof(Transition.ConditionAdded), this, nameof(_OnTransitionConditionAdded)))
-                            transition.Disconnect(nameof(Transition.ConditionAdded), this, nameof(_OnTransitionConditionAdded));
+                        if (transition.IsConnected(nameof(Transition.ConditionAdded), this, nameof(OnTransitionConditionAdded)))
+                            transition.Disconnect(nameof(Transition.ConditionAdded), this, nameof(OnTransitionConditionAdded));
                     }
                     transition = value;
-                    _OnTransitionChanged(transition);
+                    OnTransitionChanged(transition);
                 }
             }
         }
-        public Dictionary<string, ConditionDetails> conditionNameToDetailsDict { get; private set; } = new Dictionary<string, ConditionDetails>();
+
+        /// <summary>
+        /// Maps condition names to a ConditionDetail object for that condition.
+        /// This allows you to override the actual ConditionDetails of the condition with your own ConditionDetails.
+        /// This is used by the debugger to visualize a remote StateMachine when the game is running.
+        /// </summary>
+        public Dictionary<string, ConditionDisplayDetails> ConditionDisplayDetailOverrides { get; private set; } = new Dictionary<string, ConditionDisplayDetails>();
 
         public TransitionLine()
         {
@@ -112,78 +118,81 @@ namespace GodotRollbackNetcode.StateMachine
                     }
                     if (condition is ValueCondition valueCondition)
                     {
-                        var details = valueCondition.ConditionDetails;
-                        if (conditionNameToDetailsDict.ContainsKey(condition.Name))
-                            label.Text = label.Text.Format(overrideTemplateVar);
-                        else label.Text = $"{valueCondition.Name} {valueCondition.GetComparationSymbol()} {}";
+                        var valueDetails = ValueConditionDisplayDetails.From(valueCondition);
+
+                        if (ConditionDisplayDetailOverrides.TryGetValue(condition.Name, out ConditionDisplayDetails newDetails)
+                            && newDetails is ValueConditionDisplayDetails newValueDetails)
+                            valueDetails.CopySetValuesFrom(newValueDetails);
+
+                        label.Text = valueDetails.DisplayString();
                     }
                     else
                         label.Text = condition.Name;
                 }
             }
             Update();
-
         }
 
-        public void _OnTransitionChanged(__TYPE newTransition)
+        public Label GetLabelForCondition(string conditionName)
         {
-            if (!is_inside_tree())
-            {
+            return conditionLabelContainer.GetNodeOrNull<Label>(conditionName);
+        }
+
+        private void OnTransitionChanged(Transition newTransition)
+        {
+            if (!IsInsideTree())
                 return;
 
-            }
-            if (newTransition)
+            if (newTransition != null)
             {
-                newTransition.Connect("condition_added", this, "_on_transition_condition_added")
+                newTransition.Connect(nameof(Transition.ConditionAdded), this, nameof(OnTransitionConditionAdded));
+                newTransition.Connect(nameof(Transition.ConditionRemoved), this, nameof(OnTransitionConditionRemoved));
 
-
-            newTransition.Connect("condition_removed", this, "_on_transition_condition_removed")
-
-
-            foreach (var condition in newTransition.conditions.Values())
+                foreach (Condition condition in newTransition.Conditions.Values)
                 {
-                    condition.Connect("name_changed", this, "_on_condition_name_changed");
-                    condition.Connect("display_string_changed", this, "_on_condition_display_string_changed");
+                    condition.Connect(nameof(Condition.NameChanged), this, nameof(OnConditionNameChanged));
+                    condition.Connect(nameof(Condition.DisplayStringChanged), this, nameof(OnConditionDisplayStringChanged));
                 }
             }
             UpdateLabel();
-
         }
 
-        public void _OnTransitionConditionAdded(__TYPE condition)
+        #region Signal Listeners
+        private void OnTransitionConditionAdded(Condition condition)
         {
-            condition.Connect("name_changed", this, "_on_condition_name_changed");
-            condition.Connect("display_string_changed", this, "_on_condition_display_string_changed");
+            condition.Connect(nameof(Condition.NameChanged), this, nameof(OnConditionNameChanged));
+            condition.Connect(nameof(Condition.DisplayStringChanged), this, nameof(OnConditionDisplayStringChanged));
             UpdateLabel();
-
         }
 
-        public void _OnTransitionConditionRemoved(__TYPE condition)
+        private void OnTransitionConditionRemoved(Condition condition)
         {
-            condition.Disconnect("name_changed", this, "_on_condition_name_changed");
-            condition.Disconnect("display_string_changed", this, "_on_condition_display_string_changed");
+            condition.Disconnect(nameof(Condition.NameChanged), this, nameof(OnConditionNameChanged));
+            condition.Disconnect(nameof(Condition.DisplayStringChanged), this, nameof(OnConditionDisplayStringChanged));
             UpdateLabel();
-
         }
 
-        public void _OnConditionNameChanged(__TYPE from, __TYPE to)
+        private void OnConditionNameChanged(string from, string to)
         {
-            var label = conditionLabelContainer.GetNodeOrNull(from);
-            if (label)
-            {
-                label.name = to;
-            }
-            UpdateLabel();
+            var label = conditionLabelContainer.GetNodeOrNull<Label>(from);
+            if (label != null)
+                label.Name = to; // We want label name to equal conditon name for lookups using GetNode
 
+            UpdateLabel();
         }
 
-        public void _OnConditionDisplayStringChanged(__TYPE displayString)
+        private void OnConditionDisplayStringChanged(string displayString)
         {
             UpdateLabel();
-
         }
+        #endregion
 
-
+        /// <summary>
+        /// Used for looking up the transition line using GetNode
+        /// </summary>
+        /// <param name="transitionLine"></param>
+        /// <returns></returns>
+        public static string GetUniqueNodeName(TransitionLine transitionLine) => GetUniqueNodeName(transitionLine.transition);
+        public static string GetUniqueNodeName(Transition transition) => $"{transition.From}>{transition.To}";
     }
-
 }

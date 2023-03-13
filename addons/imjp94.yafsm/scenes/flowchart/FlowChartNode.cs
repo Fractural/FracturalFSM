@@ -5,7 +5,7 @@ using Godot;
 namespace GodotRollbackNetcode.StateMachine
 {
     [Tool]
-    public class FlowChartNode : Container
+    public class FlowChartNode : Container, ISelectable
     {
         // FlowChartNode has a custom style normal, focus
 

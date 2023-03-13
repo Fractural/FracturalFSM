@@ -8,7 +8,7 @@ namespace GodotRollbackNetcode.StateMachine
     public class Condition : Resource
     {
         [Signal] public delegate void NameChanged(string oldName, string newName);
-        [Signal] public delegate void DisplayStringChanged(string newString);
+        [Signal] public delegate void DisplayStringChanged(string newString);   // TODO: Delete if unecesary
 
         // Name of condition, unique to Transition
         private string name;

@@ -1,29 +1,21 @@
 
 using System;
 using Godot;
-using Dictionary = Godot.Collections.Dictionary;
-using Array = Godot.Collections.Array;
 
-
-public class StateInspector : EditorInspectorPlugin
+namespace GodotRollbackNetcode.StateMachine
 {
-	 
-	public const var State = GD.Load("res://addons/imjp94.yafsm/src/states/State.gd");
-	
-	public __TYPE CanHandle(__TYPE object)
-	{  
-		return object is State;
-	
-	}
-	
-	public __TYPE ParseProperty(__TYPE object, __TYPE type, __TYPE path, __TYPE hint, __TYPE hintText, __TYPE usage)
-	{  
-		// Hide all property
-		return true;
-	
-	
-	}
-	
-	
-	
+    public class StateInspector : EditorInspectorPlugin
+    {
+        public override bool CanHandle(Godot.Object @object)
+        {
+            return @object is State;
+        }
+
+        public override bool ParseProperty(Godot.Object @object, int type, string path, int hint, string hintText, int usage)
+        {
+            // Hide all properties
+            return true;
+        }
+    }
+
 }

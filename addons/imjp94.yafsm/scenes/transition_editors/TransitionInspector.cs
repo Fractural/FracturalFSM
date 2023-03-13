@@ -1,59 +1,45 @@
 
 using System;
 using Godot;
-using Dictionary = Godot.Collections.Dictionary;
-using Array = Godot.Collections.Array;
+using Fractural.Utils;
 
-[Tool]
-public class TransitionInspector : EditorInspectorPlugin
+namespace GodotRollbackNetcode.StateMachine
 {
-	 
-	public const var Transition = GD.Load("res://addons/imjp94.yafsm/src/transitions/Transition.gd");
-	
-	public const var TransitionEditor = GD.Load("res://addons/imjp94.yafsm/scenes/transition_editors/TransitionEditor.tscn");
-	
-	public __TYPE undoRedo;
-	
-	public __TYPE transitionIcon;
-	
-	public __TYPE CanHandle(__TYPE object)
-	{  
-		return object is Transition;
-	
-	}
-	
-	public __TYPE ParseProperty(__TYPE object, __TYPE type, __TYPE path, __TYPE hint, __TYPE hintText, __TYPE usage)
-	{  
-		switch( path)
-		{
-			{"from",
-				return true;
-			{"to",
-				return true;
-			{"conditions",
-				var transitionEditor = TransitionEditor.Instance() ;// Will be freed by editor
-				transitionEditor.undo_redo = undoRedo;
-				AddCustomControl(transitionEditor);
-				transitionEditor.Connect("ready"}}}, this, "_on_transition_editor_tree_entered", new Array(){transitionEditor, object});
-				return true;
-			{"priority",
-				return true;
-		}
-		return false;
-	
-	}}
-	
-	public void _OnTransitionEditorTreeEntered(__TYPE editor, __TYPE transition)
-	{  
-		editor.transition = transition;
-		if(transitionIcon)
-		{
-			editor.title_icon.texture = transitionIcon;
-	
-	
-		}
-	}
-	
-	
-	
+    [Tool]
+    public class TransitionInspector : EditorInspectorPlugin
+    {
+        private UndoRedo undoRedo;
+        private Texture transitionIcon;
+        private PackedScene transitionEditorPrefab;
+
+        public TransitionInspector() { }
+        public TransitionInspector(UndoRedo undoRedo, Texture transitionIcon, PackedScene transitionEditorPrefab)
+        {
+            this.undoRedo = undoRedo;
+            this.transitionIcon = transitionIcon;
+            this.transitionEditorPrefab = transitionEditorPrefab;
+        }
+
+        public override bool CanHandle(Godot.Object @object) => @object is Transition;
+
+        public override bool ParseProperty(Godot.Object @object, int type, string path, int hint, string hintText, int usage)
+        {
+            Transition transition = @object as Transition;
+            switch (path)
+            {
+                case nameof(Transition.From):
+                    return true;
+                case nameof(Transition.To):
+                    return true;
+                case nameof(Transition.Conditions):
+                    var transitionEditor = transitionEditorPrefab.Instance<TransitionEditor>(); // Will be freed by editor
+                    transitionEditor.Construct(undoRedo, transition, transitionIcon);
+                    AddCustomControl(transitionEditor);
+                    return true;
+                case nameof(Transition.priority):
+                    return true;
+            }
+            return false;
+        }
+    }
 }

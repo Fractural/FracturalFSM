@@ -8,7 +8,7 @@ using System.Collections.Generic;
 namespace GodotRollbackNetcode.StateMachine
 {
     [Tool]
-    public class FlowChartLine : Container
+    public class FlowChartLine : Container, ISelectable
     {
         // Flowchart Custom style normal, focus, arrow
 
@@ -63,7 +63,7 @@ namespace GodotRollbackNetcode.StateMachine
             RectPivotOffset = new Vector2(0, RectSize.y / 2f);
         }
 
-        public void Join(Vector2 from, Vector2 to, float offset = default, IEnumerable<Rect2> clipRects = null)
+        public void Join(Vector2 from, Vector2 to, Vector2 offset = default, IEnumerable<Rect2> clipRects = null)
         {
             // Offset along perpendicular direction
             var perpDir = from.DirectionTo(to).Rotated(Mathf.Deg2Rad(90)).Normalized();

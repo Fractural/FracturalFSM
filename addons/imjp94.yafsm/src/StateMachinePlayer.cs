@@ -27,7 +27,7 @@ namespace GodotRollbackNetcode.StateMachine
         }
 
         [OnReadyGet(OrNull = true)]
-        private StateMachine stateMachine; // StateMachine being played 
+        public StateMachine StateMachine { get; set; } // StateMachine being played 
         private bool active = true;
         /// <summary>
         /// Whether the state machine player is enabled (active) or not
@@ -114,9 +114,9 @@ namespace GodotRollbackNetcode.StateMachine
         public override string _GetConfigurationWarning()
         {
             base._GetConfigurationWarning();
-            if (stateMachine != null)
+            if (StateMachine != null)
             {
-                if (!stateMachine.HasEntry)
+                if (!StateMachine.HasEntry)
                     return "State Machine will !function properly without Entry node";
             }
             else
@@ -182,7 +182,7 @@ namespace GodotRollbackNetcode.StateMachine
                 return;
             var from = Current;
             var localParams = localParameters.Get(PathBackward(from), new GDC.Dictionary());
-            var nextState = stateMachine.Transit(Current, parameters, localParams);
+            var nextState = StateMachine.Transit(Current, parameters, localParams);
             if (nextState != null)
             {
                 if (Stack.Contains(nextState))

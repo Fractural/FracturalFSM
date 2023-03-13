@@ -11,7 +11,7 @@ namespace GodotRollbackNetcode.StateMachine
     public class State : Resource
     {
 
-        [Signal] delegate void NameChanged(string newName);
+        [Signal] public delegate void NameChanged(string newName);
 
         // Reserved state name for Entry/Exit
         public const string EntryState = "Entry";
@@ -46,7 +46,7 @@ namespace GodotRollbackNetcode.StateMachine
             set => SetMeta(MetaGraphOffset, value);
         }
 
-        public void _Init(string name = "")
+        public State(string name = "")
         {
             this.name = name;
         }

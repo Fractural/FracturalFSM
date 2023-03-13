@@ -7,6 +7,18 @@ using GDC = Godot.Collections;
 
 namespace GodotRollbackNetcode.StateMachine
 {
+    public struct ConnectionPair
+    {
+        public ConnectionPair(string from, string to)
+        {
+            From = from;
+            To = to;
+        }
+
+        public string From { get; set; }
+        public string To { get; set; }
+    }
+
     public class Connection
     {
         /// <summary>
@@ -43,13 +55,13 @@ namespace GodotRollbackNetcode.StateMachine
         /// Return start position of line
         /// </summary>
         /// <returns></returns>
-        private Vector2 GetFromPos() => FromNode.RectPosition + FromNode.RectSize / 2f;
+        public Vector2 GetFromPos() => FromNode.RectPosition + FromNode.RectSize / 2f;
 
         /// <summary>
         /// Return destination position of line
         /// </summary>
         /// <returns></returns>
-        private Vector2 GetToPos() => ToNode != null ? ToNode.RectPosition + ToNode.RectSize / 2f : Line.RectPosition;
+        public Vector2 GetToPos() => ToNode != null ? ToNode.RectPosition + ToNode.RectSize / 2f : Line.RectPosition;
     }
 
     [Tool]
@@ -119,7 +131,7 @@ namespace GodotRollbackNetcode.StateMachine
         /// Called after connection established
         /// </summary>
         /// <param name="connection"></param>
-        private void AfterConnectNode(Connection connection)
+        public void AfterConnectNode(Connection connection)
         {
             ContentLines.AddChild(connection.Line);
             connection.Join();
@@ -256,14 +268,14 @@ namespace GodotRollbackNetcode.StateMachine
         /// Return GDC.Array of GDC.Dictionary of connection as such [new GDC.Dictionary(){{"from1", "to1"}}, new GDC.Dictionary(){{"from2", "to2"}}]
         /// </summary>
         /// <returns></returns>
-        public IReadOnlyList<(string, string)> GetConnectionList()
+        public IReadOnlyList<ConnectionPair> GetConnectionList()
         {
-            List<(string, string)> connectionList = new List<(string, string)>();
+            List<ConnectionPair> connectionList = new List<ConnectionPair>();
             foreach (GDC.Dictionary connectionsFrom in Connections.Values)
             {
                 foreach (Connection connection in connectionsFrom.Values)
                 {
-                    connectionList.Add((connection.FromNode.Name, connection.ToNode.Name));
+                    connectionList.Add(new ConnectionPair(connection.FromNode.Name, connection.ToNode.Name));
                 }
             }
             return connectionList;

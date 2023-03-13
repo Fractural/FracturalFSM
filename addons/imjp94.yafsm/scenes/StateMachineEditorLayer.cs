@@ -6,11 +6,9 @@ using Fractural.Utils;
 
 namespace GodotRollbackNetcode.StateMachine
 {
-
     [Tool]
     public class StateMachineEditorLayer : FlowChartLayer
     {
-        // TODO: Finish fixi 
         private Color editorAccentColor = Colors.White;
         public Color EditorAccentColor
         {
@@ -23,32 +21,31 @@ namespace GodotRollbackNetcode.StateMachine
         }
         public Color editorComplementaryColor = Colors.White;
 
-        public StateMachine stateMachine;
+        public StateMachine StateMachine { get; set; }
         public Tween tween = new Tween();
 
-        public void _Init()
+        public StateMachineEditorLayer()
         {
             AddChild(tween);
             tween.Connect("tree_entered", this, "_on_tween_tree_entered");
-
         }
 
         public void _OnTweenTreeEntered()
         {
             tween.Start();
-
         }
 
+        // TODO: Refactor this hacky mess it's soo coupled... :(
         public void DebugUpdate(string currentState, GDC.Dictionary parameters, GDC.Dictionary localParameters)
         {
-            if (stateMachine == null)
+            if (StateMachine == null)
                 return;
 
             var currentDir = new StateDirectory(currentState);
 
-            var transitions = stateMachine.Transitions.Get(currentState, new GDC.Dictionary() { });
+            var transitions = StateMachine.Transitions.Get(currentState, new GDC.Dictionary() { });
             if (currentDir.IsNested)
-                transitions = stateMachine.Transitions.Get(currentDir.End, new GDC.Dictionary() { });
+                transitions = StateMachine.Transitions.Get(currentDir.End, new GDC.Dictionary() { });
 
             foreach (Transition transition in transitions.Values)
             {
@@ -61,171 +58,139 @@ namespace GodotRollbackNetcode.StateMachine
                     var color2 = Colors.White;
                     color2.a = 0.5f;
                     if (line.SelfModulate == color1)
-                    {
                         tween.InterpolateProperty(line, "self_modulate", null, color2, 1);
-                    }
                     else if (line.SelfModulate == color2)
-                    {
                         tween.InterpolateProperty(line, "self_modulate", null, color1, 1);
-                    }
                     else if (line.SelfModulate == Colors.White)
-                    {
                         tween.InterpolateProperty(line, "self_modulate", null, color2, 1);
-                        // Update TransitionLine condition labels
-                    }
+
+                    // Update TransitionLine condition labels
                     foreach (Condition condition in transition.Conditions.Values)
                     {
-                        if (!(condition is ValueCondition)) // Ignore trigger
+                        if (!(condition is ValueCondition valueCondition)) // Ignore trigger
                             continue;
 
-                        var value = parameters.Get(condition.Name);
-                        value = value != null ? GD.Str(value) : "?";
+                        var value = parameters.Get<object>(condition.Name);
+                        value = value != null ? value : "?";
 
+                        var label = line.GetLabelForCondition(condition.Name);
+                        var overrideDetails = line.ConditionDisplayDetailOverrides.GetValue(valueCondition.Name) as ValueConditionDisplayDetails;
 
-                        var label = line.Vbox.GetNodeOrNull(condition.Name);
-                        var overrideTemplateVar = line._template_var.Get(condition.name);
-
-
-                        if (overrideTemplateVar == null)
+                        if (overrideDetails == null)
                         {
-
-                            overrideTemplateVar = new GDC.Dictionary() { };
-
-
-                            line._template_var[condition.name] = overrideTemplateVar;
+                            overrideDetails = new ValueConditionDisplayDetails();
+                            line.ConditionDisplayDetailOverrides[valueCondition.Name] = overrideDetails;
                         }
 
-
-                        overrideTemplateVar["value"] = GD.Str(value)
-
-
-                    line.UpdateLabel();
-                        // Condition label color based on comparation
-                        if (condition.Compare(parameters.Get(condition.name)) || condition.Compare(localParameters.Get(condition.name)))
+                        overrideDetails.Value = GD.Str(value);
+                        line.UpdateLabel();
+                        // Condition label color based on comparation with parameter values -- green if comparation is true, red if it's false
+                        if (valueCondition.Compare(parameters.Get<Condition>(valueCondition.Name)) || valueCondition.Compare(localParameters.Get<Condition>(valueCondition.Name)))
                         {
-                            if (label.self_modulate != Color.green)
-                            {
-                                tween.InterpolateProperty(label, "self_modulate", null, Color.green.Lightened(0.5), 0.1);
-                            }
+                            if (label.SelfModulate != Colors.Green)
+                                tween.InterpolateProperty(label, "self_modulate", null, Colors.Green.Lightened(0.5f), 0.1f);
                         }
                         else
                         {
-                            if (label.self_modulate != Color.red)
-                            {
-                                tween.InterpolateProperty(label, "self_modulate", null, Color.red.Lightened(0.5), 0.1);
-                            }
+                            if (label.SelfModulate != Colors.Red)
+                                tween.InterpolateProperty(label, "self_modulate", null, Colors.Red.Lightened(0.5f), 0.1f);
                         }
                     }
                 }
             }
             tween.Start();
-
         }
 
-        public async void DebugTransitOut(__TYPE from, __TYPE to)
+        public async void DebugTransitOut(string from, string to)
         {
-            var fromDir = StateDirectory.new(from)
+            var fromDir = new StateDirectory(from);
+            var toDir = new StateDirectory(to);
 
-
-        var toDir = StateDirectory.new(to)
-
-
-        var fromNode = ContentNodes.GetNodeOrNull(fromDir.GetEnd());
-            if (fromNode)
+            var fromNode = ContentNodes.GetNodeOrNull<Control>(fromDir.End);
+            if (fromNode != null)
             {
-                fromNode.self_modulate = editorComplementaryColor;
-                tween.InterpolateProperty(fromNode, "self_modulate", null, Colors.White, 0.5);
+                fromNode.SelfModulate = editorComplementaryColor;
+                tween.InterpolateProperty(fromNode, "self_modulate", null, Colors.White, 0.5f);
             }
-            var transitions = stateMachine.Transitions.Get(from, new GDC.Dictionary() { });
-            if (fromDir.IsNested())
+            var transitions = StateMachine.Transitions.Get(from, new GDC.Dictionary());
+            if (fromDir.IsNested)
             {
-                transitions = stateMachine.Transitions.Get(fromDir.GetEnd(), new GDC.Dictionary() { });
+                transitions = StateMachine.Transitions.Get(fromDir.End, new GDC.Dictionary());
                 // Fade out color of StateNode
             }
-            foreach (var transition in transitions.Values())
+            foreach (Transition transition in transitions.Values)
             {
-                var line = ContentLines.GetNodeOrNull("%s>%s" % [transition.from, transition.to]);
-                if (line)
+                var line = ContentLines.GetNodeOrNull<TransitionLine>(TransitionLine.GetUniqueNodeName(transition));
+                if (line != null)
                 {
-                    line.template = "{conditionName} {conditionComparation} {conditionValue}";
                     line.UpdateLabel();
                     tween.Remove(line, "self_modulate");
-                    if (transition.to == toDir.GetEnd())
+                    if (transition.To == toDir.End)
                     {
-                        line.self_modulate = editorComplementaryColor;
-                        tween.InterpolateProperty(line, "self_modulate", null, Colors.White, 2, Tween.TRANS_EXPO, Tween.EASE_IN);
+                        line.SelfModulate = editorComplementaryColor;
+                        tween.InterpolateProperty(line, "self_modulate", null, Colors.White, 2, Tween.TransitionType.Expo, Tween.EaseType.In);
                     }
                     else
                     {
-                        tween.InterpolateProperty(line, "self_modulate", null, Colors.White, 0.1);
-                        // Revert color of TransitionLine condition labels
+                        tween.InterpolateProperty(line, "self_modulate", null, Colors.White, 0.1f);
                     }
-                    foreach (var condition in transition.conditions.Values())
+                    // Revert color of TransitionLine condition labels
+                    foreach (Condition condition in transition.Conditions.Values)
                     {
-                        if (!(condition is ValueCondition)) // Ignore trigger
-                        {
+                        if (!(condition is ValueCondition valueCondition)) // Ignore trigger
                             continue;
-                        }
-                        var label = line.vbox.GetNodeOrNull(condition.name);
-                        if (label.self_modulate != Colors.White)
+
+                        var label = line.GetLabelForCondition(condition.Name);
+                        if (label.SelfModulate != Colors.White)
                         {
-                            tween.InterpolateProperty(label, "self_modulate", null, Colors.White, 0.5);
+                            tween.InterpolateProperty(label, "self_modulate", null, Colors.White, 0.5f);
                         }
                     }
                 }
             }
-            if (fromDir.IsNested() && fromDir.IsExit())
+            if (fromDir.IsNested && fromDir.IsExit)
             {
                 // Transition from nested state
-                transitions = stateMachine.Transitions.Get(fromDir.GetBase(), new GDC.Dictionary() { });
-                foreach (var transition in transitions.Values())
+                transitions = StateMachine.Transitions.Get(fromDir.Base, new GDC.Dictionary());
+                foreach (Transition transition in transitions.Values)
                 {
-                    var line = ContentLines.GetNodeOrNull("%s>%s" % [transition.from, transition.to]);
-                    if (line)
-                    {
-                        tween.InterpolateProperty(line, "self_modulate", null, editorComplementaryColor.Lightened(0.5), 0.5);
-                    }
+                    var line = ContentLines.GetNodeOrNull(TransitionLine.GetUniqueNodeName(transition));
+                    if (line != null)
+                        tween.InterpolateProperty(line, "self_modulate", null, editorComplementaryColor.Lightened(0.5f), 0.5f);
                 }
-                await ToSignal(tween, "tween_completed")
 
+                // TODO: Maybe have to refactor this if we want to support rollback. What if we rollback while waiting for tween to complete?
+                await ToSignal(tween, "tween_completed");
 
-            foreach (var transition in transitions.Values())
+                foreach (Transition transition in transitions.Values)
                 {
-                    var line = ContentLines.GetNodeOrNull("%s>%s" % [transition.from, transition.to]);
-                    if (line)
-                    {
-                        tween.InterpolateProperty(line, "self_modulate", null, Colors.White, 0.5);
-                    }
+                    var line = ContentLines.GetNodeOrNull(TransitionLine.GetUniqueNodeName(transition));
+                    if (line != null)
+                        tween.InterpolateProperty(line, "self_modulate", null, Colors.White, 0.5f);
                 }
             }
             tween.Start();
-
         }
 
-        public void DebugTransitIn(__TYPE from, __TYPE to)
+        public void DebugTransitIn(string from, string to)
         {
-            var toDir = StateDirectory.new(to)
-
-
-        var toNode = ContentNodes.GetNodeOrNull(toDir.GetEnd());
-            if (toNode)
-            {
+            var toDir = new StateDirectory(to);
+            var toNode = ContentNodes.GetNodeOrNull(toDir.End);
+            if (toNode != null)
                 tween.InterpolateProperty(toNode, "self_modulate", null, editorComplementaryColor, 0.5);
-            }
-            var transitions = stateMachine.Transitions.Get(to, new GDC.Dictionary() { });
-            if (toDir.IsNested())
+
+            var transitions = StateMachine.Transitions.Get(to, new GDC.Dictionary());
+            if (toDir.IsNested)
+                transitions = StateMachine.Transitions.Get(toDir.End, new GDC.Dictionary());
+
+            // Change string template for current TransitionLines
+            foreach (Transition transition in transitions.Values)
             {
-                transitions = stateMachine.Transitions.Get(toDir.GetEnd(), new GDC.Dictionary() { });
-                // Change string template for current TransitionLines
-            }
-            foreach (var transition in transitions.Values())
-            {
-                var line = ContentLines.GetNodeOrNull("%s>%s" % [transition.from, transition.to]);
-                line.template = "{conditionName} {conditionComparation} {conditionValue}(new GDC.Dictionary(){value})";
+                var line = ContentLines.GetNodeOrNull<TransitionLine>(TransitionLine.GetUniqueNodeName(transition));
+                line.Template = "{conditionName} {conditionComparation} {conditionValue}({value})";
+                // TODO: Reimplment template b/c that's most flexible way of controlling output for label.
             }
             tween.Start();
-
         }
-
     }
 }

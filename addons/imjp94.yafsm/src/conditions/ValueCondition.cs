@@ -18,13 +18,6 @@ namespace GodotRollbackNetcode.StateMachine
     [Tool]
     public abstract class ValueCondition : Condition
     {
-        public class ConditionDetails
-        {
-            public string Name { get; set; }
-            public string ComparationSymbol { get; set; }
-            public string Value { get; set; }
-        }
-
         [Signal] public delegate void ComparationChanged(ComparationType newComparation); // Comparation hanged
         [Signal] public delegate void ValueChanged(object newValue); // Value changed
 
@@ -142,12 +135,5 @@ namespace GodotRollbackNetcode.StateMachine
         {
             return $"{base.DisplayString()} {ComparationSymbols[(int)Comparation]} {GetValueString()}";
         }
-
-        public ConditionDetails ConditionDetails => new ConditionDetails()
-        {
-            Name = Name,
-            ComparationSymbol = ComparationSymbols[(int)Comparation],
-            Value = GetValueString()
-        };
     }
 }
