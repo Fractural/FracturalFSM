@@ -1,7 +1,7 @@
 [gd_scene load_steps=3 format=2]
 
 [ext_resource path="res://addons/FracturalFSM/Editor/Conditions/_Condition/ConditionEditor.tscn" type="PackedScene" id=1]
-[ext_resource path="res://addons/FracturalFSM/Editor/Conditions/_ValueCondition/ValueConditionEditor.gd" type="Script" id=2]
+[ext_resource path="res://addons/FracturalFSM/Editor/Conditions/_ValueCondition/ValueConditionEditor.cs" type="Script" id=2]
 
 [node name="ValueConditionEditor" instance=ExtResource( 1 )]
 script = ExtResource( 2 )

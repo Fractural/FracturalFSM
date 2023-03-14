@@ -1,6 +1,6 @@
 [gd_scene load_steps=8 format=2]
 
-[ext_resource path="res://addons/FracturalFSM/Editor/State/StateNode.gd" type="Script" id=1]
+[ext_resource path="res://addons/FracturalFSM/Editor/State/StateNode.cs" type="Script" id=1]
 
 [sub_resource type="StyleBoxFlat" id=1]
 bg_color = Color( 0.164706, 0.164706, 0.164706, 1 )
@@ -80,10 +80,10 @@ mouse_filter = 2
 mouse_default_cursor_shape = 0
 size_flags_horizontal = 4
 size_flags_vertical = 4
+custom_colors/font_color_uneditable = Color( 1, 1, 1, 1 )
 custom_styles/read_only = SubResource( 6 )
 custom_styles/focus = SubResource( 6 )
 custom_styles/normal = SubResource( 6 )
-custom_colors/font_color_uneditable = Color( 1, 1, 1, 1 )
 text = "State"
 align = 1
 editable = false
