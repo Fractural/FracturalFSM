@@ -15,6 +15,7 @@ namespace Fractural.StateMachine
 
         public override void RealReady()
         {
+            base.RealReady();
             booleanValue.Connect("pressed", this, nameof(OnBooleanValuePressed));
         }
 

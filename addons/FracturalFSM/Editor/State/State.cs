@@ -46,6 +46,7 @@ namespace Fractural.StateMachine
             set => SetMeta(MetaGraphOffset, value);
         }
 
+        public State() : this("") { }
         public State(string name = "")
         {
             this.name = name;

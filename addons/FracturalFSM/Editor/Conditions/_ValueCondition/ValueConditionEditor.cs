@@ -32,6 +32,7 @@ namespace Fractural.StateMachine
 
         public override void RealReady()
         {
+            base.RealReady();
             comparationButton.Connect("pressed", this, nameof(OnComparationButtonPressed));
             comparationPopupMenu.Connect("id_pressed", this, nameof(OnComparationPopupMenuIdPressed));
         }

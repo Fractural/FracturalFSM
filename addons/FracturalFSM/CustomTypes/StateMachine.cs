@@ -62,6 +62,7 @@ namespace Fractural.StateMachine
         }
         #endregion
 
+        public StateMachine() : this("", null, null) { }
         public StateMachine(string name = "", GDC.Dictionary transitions = null, GDC.Dictionary states = null) : base(name)
         {
             if (transitions != null)

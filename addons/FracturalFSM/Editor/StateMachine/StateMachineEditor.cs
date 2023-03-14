@@ -46,13 +46,6 @@ namespace Fractural.StateMachine
         #endregion
 
         #region Dependencies
-        [Export]
-        private PackedScene stateNodePrefab;
-        [Export]
-        private PackedScene transitionLinePrefab;
-        [Export]
-        private PackedScene stateMachineEditorLayerPrefab;
-
         /// <summary>
         /// Context menu for creating new nodes
         /// </summary>
@@ -80,6 +73,39 @@ namespace Fractural.StateMachine
         private Texture transitionArrowIcon;
 
         private UndoRedo undoRedo;
+
+        private PackedScene stateNodePrefab;
+        private PackedScene StateNodePrefab
+        {
+            get
+            {
+                if (stateNodePrefab == null)
+                    stateNodePrefab = GD.Load<PackedScene>("res://addons/FracturalFSM/Editor/State/StateNode.tscn");
+                return stateNodePrefab;
+            }
+        }
+
+        private PackedScene transitionLinePrefab;
+        private PackedScene TransitionLinePrefab
+        {
+            get
+            {
+                if (transitionLinePrefab == null)
+                    transitionLinePrefab = GD.Load<PackedScene>("res://addons/FracturalFSM/Editor/Transition/TransitionLine.tscn");
+                return transitionLinePrefab;
+            }
+        }
+
+        private PackedScene stateLayerPrefab;
+        private PackedScene StateLayerPrefab
+        {
+            get
+            {
+                if (stateLayerPrefab == null)
+                    stateLayerPrefab = GD.Load<PackedScene>("res://addons/FracturalFSM/Editor/StateMachine/StateMachineEditorLayer.tscn");
+                return stateLayerPrefab;
+            }
+        }
         #endregion
 
         #region Public properties
@@ -191,6 +217,7 @@ namespace Fractural.StateMachine
         [OnReady]
         public void RealReady()
         {
+            GD.Print("RealReady: ");
             createNewStateMachineContainer.Visible = false;
             createNewStateMachine.Connect("pressed", this, nameof(OnCreateNewStateMachinePressed));
             contextMenu.Connect("index_pressed", this, nameof(OnContextMenuIndexPressed));
@@ -198,7 +225,8 @@ namespace Fractural.StateMachine
             convertToStateConfirmation.Connect("confirmed", this, nameof(OnConvertToStateConfirmationConfirmed));
             saveDialog.Connect("confirmed", this, nameof(OnSaveDialogConfirmed));
 
-            var theme = this.GetThemeFromAncestor();
+            var theme = this.GetThemeFromAncestor(true);
+            GD.Print("Theme: " + theme);
             SelectionStylebox.BgColor = theme.GetColor("box_selection_fill_color", "Editor");
             SelectionStylebox.BorderColor = theme.GetColor("box_selection_stroke_color", "Editor");
             zoomMinus.Icon = theme.GetIcon("ZoomLess", "EditorIcons");
@@ -329,7 +357,7 @@ namespace Fractural.StateMachine
         /// <param name="index"></param>
         private void OnContextMenuIndexPressed(int index)
         {
-            var newNode = stateNodePrefab.Instance<StateNode>();
+            var newNode = StateNodePrefab.Instance<StateNode>();
             newNode.Theme.GetStylebox<StyleBoxFlat>("focus", "FlowChartNode").BorderColor = editorAccentColor;
             switch (index)
             {
@@ -682,14 +710,14 @@ namespace Fractural.StateMachine
 
         public override FlowChartLayer CreateLayerInstance()
         {
-            var layer = stateMachineEditorLayerPrefab.Instance<StateMachineEditorLayer>();
+            var layer = StateLayerPrefab.Instance<StateMachineEditorLayer>();
             layer.Construct(editorAccentColor);
             return layer;
         }
 
         public override FlowChartLine CreateLineInstance()
         {
-            var line = transitionLinePrefab.Instance<TransitionLine>();
+            var line = TransitionLinePrefab.Instance<TransitionLine>();
             line.Theme.GetStylebox<StyleBoxFlat>("focus", "FlowChartLine").ShadowColor = editorAccentColor;
             line.Theme.SetIcon("arrow", "FlowChartLine", transitionArrowIcon);
             return line;

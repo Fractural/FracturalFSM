@@ -33,9 +33,6 @@ margin_top = 8.0
 margin_right = 177.0
 margin_bottom = 50.0
 script = ExtResource( 1 )
-__meta__ = {
-"_edit_use_anchors_": false
-}
 conditionProcessors = [ ExtResource( 6 ), ExtResource( 4 ), ExtResource( 5 ), ExtResource( 2 ), ExtResource( 3 ) ]
 
 [node name="HeaderContainer" type="MarginContainer" parent="."]

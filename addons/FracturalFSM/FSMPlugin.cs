@@ -7,7 +7,7 @@ using Fractural.Plugin;
 namespace Fractural.StateMachine
 {
     [Tool]
-    public class Plugin : ExtendedPlugin
+    public class FSMPlugin : ExtendedPlugin
     {
         public StateMachineEditor stateMachineEditor;
         public TransitionInspector transitionInspector;
@@ -36,7 +36,7 @@ namespace Fractural.StateMachine
 
         protected override void Load()
         {
-            var theme = this.GetThemeFromAncestor();
+            var theme = GetEditorInterface().GetBaseControl().Theme;
             // Force anti-alias for default font, so rotated text will looks smoother
             var font = theme.GetFont<DynamicFont>("main", "EditorFonts");
             font.UseFilter = true;
@@ -52,7 +52,8 @@ namespace Fractural.StateMachine
             AddManagedCustomType(nameof(StateMachinePlayer), nameof(Node), GD.Load<CSharpScript>("res://addons/FracturalFSM/CustomTypes/StateMachinePlayer.cs"), stateMachinePlayerIcon);
             AddManagedCustomType(nameof(StateMachine), nameof(Resource), GD.Load<CSharpScript>("res://addons/FracturalFSM/CustomTypes/StateMachine.cs"), stateMachineIcon);
 
-            stateMachineEditor = new StateMachineEditor();
+            PackedScene stateMachineEditorPrefab = GD.Load<PackedScene>("res://addons/FracturalFSM/Editor/StateMachine/StateMachineEditor.tscn");
+            stateMachineEditor = stateMachineEditorPrefab.Instance<StateMachineEditor>();
             stateMachineEditor.Connect(nameof(StateMachineEditor.InspectorChanged), this, nameof(OnInspectorChanged));
             stateMachineEditor.Connect(nameof(StateMachineEditor.NodeSelected), this, nameof(OnStateMachineEditorNodeSelected));
             stateMachineEditor.Connect(nameof(StateMachineEditor.NodeDeselected), this, nameof(OnStateMachineEditorNodeDeselected));

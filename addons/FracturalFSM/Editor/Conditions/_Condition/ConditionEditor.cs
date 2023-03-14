@@ -11,7 +11,7 @@ namespace Fractural.StateMachine
         [Signal] public delegate void Removed();
 
         [OnReadyGet("Name")]
-        private Label nameEdit;
+        private LineEdit nameEdit;
         [OnReadyGet("Remove")]
         private Button remove;
 

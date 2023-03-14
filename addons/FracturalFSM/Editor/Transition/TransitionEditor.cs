@@ -73,12 +73,14 @@ namespace Fractural.StateMachine
         public void RealReady()
         {
             int nextFreeId = 0;
+            GD.Print("Before conditon processors");
             foreach (ConditionProcessor processor in conditionProcessors)
             {
                 processor.ID = nextFreeId;
                 addPopupMenu.AddItem(processor.ConditionName, nextFreeId);
                 nextFreeId++;
             }
+            GD.Print("After conditon processors");
 
             header.Connect("gui_input", this, nameof(OnHeaderGuiInput));
             prioritySpinbox.Connect("value_changed", this, nameof(OnPrioritySpinboxValueChanged));
@@ -244,8 +246,8 @@ namespace Fractural.StateMachine
         public void AddConditionEditorAction(ConditionEditor editor, Condition condition)
         {
             undoRedo.CreateAction("Add Transition Condition");
-            undoRedo.AddDoMethod(this, "add_condition_editor", editor, condition);
-            undoRedo.AddUndoMethod(this, "remove_condition_editor", editor);
+            undoRedo.AddDoMethod(this, nameof(AddConditionEditor), editor, condition);
+            undoRedo.AddUndoMethod(this, nameof(RemoveConditionEditor), editor);
             undoRedo.CommitAction();
 
         }
@@ -253,8 +255,8 @@ namespace Fractural.StateMachine
         public void RemoveConditionEditorAction(ConditionEditor editor)
         {
             undoRedo.CreateAction("Remove Transition Condition");
-            undoRedo.AddDoMethod(this, "remove_condition_editor", editor);
-            undoRedo.AddUndoMethod(this, "add_condition_editor", editor, editor.Condition);
+            undoRedo.AddDoMethod(this, nameof(RemoveConditionEditor), editor);
+            undoRedo.AddUndoMethod(this, nameof(AddConditionEditor), editor, editor.Condition);
             undoRedo.CommitAction();
 
         }

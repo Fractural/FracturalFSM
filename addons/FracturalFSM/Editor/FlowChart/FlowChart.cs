@@ -93,13 +93,6 @@ namespace Fractural.FlowChart
         protected Button zoomPlus = new Button();
         protected Button snapButton = new Button();
         protected SpinBox snapAmount = new SpinBox();
-
-        [Export]
-        private PackedScene flowChartNodePrefab;
-        [Export]
-        private PackedScene flowChartLinePrefab;
-        [Export]
-        private PackedScene flowChartLayerPrefab;
         #endregion
 
         #region Private Fields
@@ -131,13 +124,13 @@ namespace Fractural.FlowChart
 
             AddChild(hScroll);
             hScroll.SetAnchorsAndMarginsPreset(LayoutPreset.BottomWide);
-            hScroll.Connect("value_changed", this, "On_h_scroll_changed");
-            hScroll.Connect("gui_input", this, "On_h_scroll_gui_input");
+            hScroll.Connect("value_changed", this, nameof(OnHScrollChanged));
+            hScroll.Connect("gui_input", this, nameof(OnHScrollGuiInput));
 
             AddChild(vScroll);
             vScroll.SetAnchorsAndMarginsPreset(LayoutPreset.RightWide);
-            vScroll.Connect("value_changed", this, "On_v_scroll_changed");
-            vScroll.Connect("gui_input", this, "On_v_scroll_gui_input");
+            vScroll.Connect("value_changed", this, nameof(OnVScrollChanged));
+            vScroll.Connect("gui_input", this, nameof(OnVScrollGuiInput));
 
             hScroll.MarginRight = -vScroll.RectSize.x;
             vScroll.MarginBottom = -hScroll.RectSize.y;
@@ -991,7 +984,6 @@ namespace Fractural.FlowChart
         {
             if (layer == null) layer = CurrentLayer;
             return layer.GetScrollRect(ScrollMargin);
-
         }
 
 
@@ -1007,6 +999,28 @@ namespace Fractural.FlowChart
         #endregion
 
         #region Virtual Prefab Creation
+        private PackedScene flowChartLayerPrefab;
+        public PackedScene FlowChartLayerPrefab
+        {
+            get
+            {
+                if (flowChartLayerPrefab == null)
+                    flowChartLayerPrefab = GD.Load<PackedScene>("res://addons/FracturalFSM/Editor/FlowChart/FlowChartLayer.tscn");
+                return flowChartLayerPrefab;
+            }
+        }
+
+        private PackedScene flowChartLinePrefab;
+        public PackedScene FlowChartLinePrefab
+        {
+            get
+            {
+                if (flowChartLinePrefab == null)
+                    flowChartLinePrefab = GD.Load<PackedScene>("res://addons/FracturalFSM/Editor/FlowChart/FlowChartLine.tscn");
+                return flowChartLinePrefab;
+            }
+        }
+
         /// <summary>
         /// Return a new layer instance to use.
         /// </summary>
@@ -1022,7 +1036,7 @@ namespace Fractural.FlowChart
         /// <returns></returns>
         public virtual FlowChartLine CreateLineInstance()
         {
-            return flowChartLinePrefab.Instance<FlowChartLine>();
+            return FlowChartLinePrefab.Instance<FlowChartLine>();
         }
         #endregion
 
