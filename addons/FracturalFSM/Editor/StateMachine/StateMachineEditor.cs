@@ -217,7 +217,6 @@ namespace Fractural.StateMachine
         [OnReady]
         public void RealReady()
         {
-            GD.Print("RealReady: ");
             createNewStateMachineContainer.Visible = false;
             createNewStateMachine.Connect("pressed", this, nameof(OnCreateNewStateMachinePressed));
             contextMenu.Connect("index_pressed", this, nameof(OnContextMenuIndexPressed));
@@ -226,7 +225,6 @@ namespace Fractural.StateMachine
             saveDialog.Connect("confirmed", this, nameof(OnSaveDialogConfirmed));
 
             var theme = this.GetThemeFromAncestor(true);
-            GD.Print("Theme: " + theme);
             SelectionStylebox.BgColor = theme.GetColor("box_selection_fill_color", "Editor");
             SelectionStylebox.BorderColor = theme.GetColor("box_selection_stroke_color", "Editor");
             zoomMinus.Icon = theme.GetIcon("ZoomLess", "EditorIcons");
@@ -435,7 +433,6 @@ namespace Fractural.StateMachine
             createNewStateMachineContainer.Visible = false;
             CheckHasEntry();
             EmitSignal(nameof(InspectorChanged), "StateMachine");
-
         }
 
         private void OnConditionVisibilityPressed()
@@ -482,8 +479,8 @@ namespace Fractural.StateMachine
             if (newStateMachinePlayer.GetClass() == "ScriptEditorDebuggerInspectedObject")
                 return;
 
-            if (newStateMachinePlayer != null && newStateMachinePlayer.StateMachine != null)
-                createNewStateMachineContainer.Visible = true;
+            if (newStateMachinePlayer != null)
+                createNewStateMachineContainer.Visible = newStateMachinePlayer.StateMachine == null;
             else
                 createNewStateMachineContainer.Visible = false;
         }
@@ -513,12 +510,12 @@ namespace Fractural.StateMachine
                 }
                 DrawGraph(rootLayer);
                 CheckHasEntry();
-
             }
         }
 
         public override void _GuiInput(InputEvent inputEvent)
         {
+            base._GuiInput(inputEvent);
             if (inputEvent is InputEventMouseButton mouseButtonEvent)
             {
                 switch (mouseButtonEvent.ButtonIndex)
@@ -538,6 +535,7 @@ namespace Fractural.StateMachine
 
         public override void _Input(InputEvent inputEvent)
         {
+            base._Input(inputEvent);
             // Intercept save action
             if (Visible && inputEvent is InputEventKey keyEvent)
             {
@@ -852,17 +850,22 @@ namespace Fractural.StateMachine
         /// </summary>
         public void CheckHasEntry()
         {
+            GD.Print("Check has entry pre null check");
             if (CurrentLayer.StateMachine == null)
                 return;
 
+            GD.Print("Check has entry");
+
             if (CurrentLayer.StateMachine.HasEntry)
             {
+                GD.Print("\tHAS entry");
                 // Has entry so remove any entry missing messages
                 if (HasMessage(EntryStateMissingMsg))
                     RemoveMessage(EntryStateMissingMsg);
             }
             else
             {
+                GD.Print("Doesn't have entry " + JSON.Print(CurrentLayer.StateMachine.States));
                 // Doesn't have entry, so add entry state missing message
                 if (!HasMessage(EntryStateMissingMsg))
                     AddMessage(EntryStateMissingMsg);
@@ -925,7 +928,9 @@ namespace Fractural.StateMachine
             stateNode.Connect(nameof(StateNode.NameEditEntered), this, nameof(OnNodeNameEditEntered), GDUtils.GDParams(stateNode));
             stateNode.Connect("gui_input", this, nameof(OnStateNodeGuiInput), GDUtils.GDParams(stateNode));
 
+            GD.Print("Node added " + JSON.Print(stateNode.State));
             stateLayer.StateMachine.AddState(stateNode.State);
+            GD.Print("state layer " + JSON.Print(stateLayer.StateMachine.States));
             CheckHasEntry();
             CheckHasExit();
             OnEdited();

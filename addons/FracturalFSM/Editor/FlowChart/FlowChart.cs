@@ -413,6 +413,7 @@ namespace Fractural.FlowChart
                 switch (mouseMotionEvent.ButtonMask)
                 {
                     case (int)ButtonList.MaskMiddle:
+                        GD.Print("panning with middle mouse button " + hScroll.Value + " " + vScroll.Value + $"  hrange{hScroll.MinValue}:{hScroll.MaxValue}  vrange{vScroll.MinValue}:{vScroll.MaxValue}");
                         // Panning
                         hScroll.Value -= mouseMotionEvent.Relative.x;
                         vScroll.Value -= mouseMotionEvent.Relative.y;

@@ -1,0 +1,14 @@
+[gd_scene load_steps=4 format=2]
+
+[ext_resource path="res://addons/FracturalFSM/CustomTypes/StateMachinePlayer.cs" type="Script" id=2]
+
+[sub_resource type="CSharpScript" id=1]
+
+[sub_resource type="Resource" id=2]
+script = SubResource( 1 )
+
+[node name="Test" type="Node2D"]
+
+[node name="StateMachinePlayer" type="Node" parent="."]
+script = ExtResource( 2 )
+StateMachineResource = SubResource( 2 )

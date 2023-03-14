@@ -11,7 +11,7 @@ using Fractural.FlowChart;
 namespace Fractural.StateMachine
 {
     [Tool]
-    public class StateMachine : State
+    public class StateMachine : State, ISerializationListener
     {
         [Signal] delegate void TransitionAdded(Transition transition);// Transition added
         [Signal] delegate void TransitionRemoved(Transition transition);// Transition removed
@@ -21,8 +21,7 @@ namespace Fractural.StateMachine
         /// [State.Name] = State
         /// </summary>
         [Export]
-        public GDC.Dictionary States { get => states.Duplicate(); set => states = value; }
-        private GDC.Dictionary states = new GDC.Dictionary();
+        public GDC.Dictionary States { get; set; } = new GDC.Dictionary();
 
         /// <summary>
         /// Transitions from this state, keyed by Transition.To
@@ -301,8 +300,8 @@ namespace Fractural.StateMachine
             return transitions.Get<GDC.Dictionary>(ExitState).Values.Cast<State>();
         }
 
-        public bool HasEntry => States.Contains(EntryState);
-        public bool HasExit => States.Contains(ExitState);
+        public bool HasEntry => States?.Contains(EntryState) ?? false;
+        public bool HasExit => States?.Contains(ExitState) ?? false;
 
         private string JoinPath(params string[] dirs)
         {
@@ -316,12 +315,13 @@ namespace Fractural.StateMachine
         /// <returns></returns>
         public bool Validate(StateMachine stateMachine)
         {
+            GD.Print($"VALIDATE: {stateMachine} {stateMachine.transitions} is transitions null {stateMachine.transitions == null}");
             bool validated = false;
             foreach (var fromKey in stateMachine.transitions.Keys)
             {
                 // Non-existing state found in StateMachine.transitions
                 // See https://github.com/imjp94/gd-YAFSM/issues/6
-                if (!stateMachine.states.Contains(fromKey))
+                if (!stateMachine.States.Contains(fromKey))
                 {
                     validated = true;
                     GD.PushWarning($"gd-YAFSM Non-existing ValidationError State({fromKey}) found in transition");
@@ -333,7 +333,7 @@ namespace Fractural.StateMachine
                 {
                     // Non-existing state found in StateMachine.transitions
                     // See https://github.com/imjp94/gd-YAFSM/issues/6
-                    if (!stateMachine.states.Contains(toKey))
+                    if (!stateMachine.States.Contains(toKey))
                     {
                         validated = true;
                         GD.PushWarning($"gd-YAFSM Non-existing ValidationError State({toKey}) found in Transition({fromKey} -> {toKey})");
@@ -362,6 +362,21 @@ namespace Fractural.StateMachine
                 }
             }
             return validated;
+        }
+
+        public void OnBeforeSerialize()
+        {
+            GD.Print("Before serialize");
+            GD.Print($"\t{JSON.Print(States)}");
+            GD.Print($"\t{JSON.Print(transitions)}");
+        }
+
+        public void OnAfterDeserialize()
+        {
+            GD.Print("After serialize");
+            GD.Print($"\t{JSON.Print(States)}");
+            GD.Print($"\t{JSON.Print(transitions)}");
+
         }
     }
 }

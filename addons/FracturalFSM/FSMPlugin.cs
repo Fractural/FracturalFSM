@@ -70,6 +70,12 @@ namespace Fractural.StateMachine
             AddManagedInspectorPlugin(stateInspector);
         }
 
+        protected override void Unload()
+        {
+            HideStateMachineEditor();
+            stateMachineEditor.QueueFree();
+        }
+
         public override bool Handles(Godot.Object @object)
         {
             if (@object is StateMachine)
