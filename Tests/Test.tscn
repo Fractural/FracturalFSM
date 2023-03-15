@@ -21,6 +21,13 @@ __meta__ = {
 }
 Name = "Exit"
 
+[sub_resource type="Resource" id=33]
+script = ExtResource( 3 )
+__meta__ = {
+"graph_offset": Vector2( 68, 40 )
+}
+Name = "State"
+
 [sub_resource type="Resource" id=17]
 script = ExtResource( 3 )
 __meta__ = {
@@ -42,13 +49,6 @@ __meta__ = {
 }
 Name = "Exit"
 
-[sub_resource type="Resource" id=24]
-script = ExtResource( 3 )
-__meta__ = {
-"graph_offset": Vector2( 228, 120 )
-}
-Name = "State"
-
 [sub_resource type="Resource" id=25]
 script = ExtResource( 3 )
 __meta__ = {
@@ -62,6 +62,13 @@ __meta__ = {
 "graph_offset": Vector2( 228, 300 )
 }
 Name = "Exit"
+
+[sub_resource type="Resource" id=24]
+script = ExtResource( 3 )
+__meta__ = {
+"graph_offset": Vector2( 228, 120 )
+}
+Name = "State"
 
 [sub_resource type="Resource" id=32]
 script = ExtResource( 3 )
@@ -78,18 +85,18 @@ Conditions = {
 }
 priority = 0
 
-[sub_resource type="Resource" id=29]
-script = ExtResource( 4 )
-From = "State"
-To = "State2"
-Conditions = {
-}
-priority = 0
-
 [sub_resource type="Resource" id=30]
 script = ExtResource( 4 )
 From = "State"
 To = "Exit"
+Conditions = {
+}
+priority = 0
+
+[sub_resource type="Resource" id=29]
+script = ExtResource( 4 )
+From = "State"
+To = "State2"
 Conditions = {
 }
 priority = 0
@@ -151,13 +158,6 @@ transitions = {
 "Exit": SubResource( 22 )
 }
 }
-
-[sub_resource type="Resource" id=33]
-script = ExtResource( 3 )
-__meta__ = {
-"graph_offset": Vector2( 68, 40 )
-}
-Name = "State"
 
 [sub_resource type="Resource" id=13]
 script = ExtResource( 6 )
