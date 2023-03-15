@@ -147,7 +147,6 @@ namespace Fractural.StateMachine
             }
             OnActiveChanged();
             OnProcessModeChanged();
-
         }
 
         public override void _Process(float delta)

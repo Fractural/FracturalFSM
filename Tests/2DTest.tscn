@@ -1,6 +1,7 @@
-[gd_scene load_steps=16 format=2]
+[gd_scene load_steps=25 format=2]
 
 [ext_resource path="res://addons/FracturalFSM/Editor/Transition/Transition.cs" type="Script" id=1]
+[ext_resource path="res://addons/FracturalFSM/Editor/Conditions/TriggerCondition/TriggerCondition.cs" type="Script" id=2]
 [ext_resource path="res://Tests/Player.cs" type="Script" id=4]
 [ext_resource path="res://icon.png" type="Texture" id=5]
 [ext_resource path="res://addons/FracturalFSM/CustomTypes/StateMachine.cs" type="Script" id=6]
@@ -10,44 +11,100 @@
 [sub_resource type="Resource" id=2]
 script = ExtResource( 8 )
 __meta__ = {
-"graph_offset": Vector2( -32, 200 )
+"graph_offset": Vector2( -112, 40 )
 }
 Name = "Entry"
+
+[sub_resource type="Resource" id=40]
+script = ExtResource( 8 )
+__meta__ = {
+"graph_offset": Vector2( 68, 20 )
+}
+Name = "Idle"
 
 [sub_resource type="Resource" id=36]
 script = ExtResource( 8 )
 __meta__ = {
-"graph_offset": Vector2( 328, 140 )
+"graph_offset": Vector2( 308, 140 )
 }
-Name = "State"
+Name = "Walk"
 
 [sub_resource type="Resource" id=37]
 script = ExtResource( 8 )
 __meta__ = {
-"graph_offset": Vector2( 188, 340 )
+"graph_offset": Vector2( 68, 220 )
 }
-Name = "State3"
+Name = "Jump"
 
-[sub_resource type="Resource" id=17]
+[sub_resource type="Resource" id=41]
 script = ExtResource( 8 )
 __meta__ = {
-"graph_offset": Vector2( 228, 60 )
+"graph_offset": Vector2( 64, 320 )
 }
-Name = "sdfsdf"
+Name = "Jump(n)"
+
+[sub_resource type="Resource" id=42]
+script = ExtResource( 8 )
+__meta__ = {
+"graph_offset": Vector2( 308, 300 )
+}
+Name = "Fall"
 
 [sub_resource type="Resource" id=5]
 script = ExtResource( 1 )
 From = "Entry"
-To = "sdfsdf"
+To = "Idle"
 Conditions = {
 }
 priority = 0
 
 [sub_resource type="Resource" id=39]
 script = ExtResource( 1 )
-From = "sdfsdf"
-To = "State"
+From = "Idle"
+To = "Walk"
 Conditions = {
+}
+priority = 0
+
+[sub_resource type="Resource" id=43]
+script = ExtResource( 2 )
+Name = "space"
+
+[sub_resource type="Resource" id=44]
+script = ExtResource( 1 )
+From = "Idle"
+To = "Jump"
+Conditions = {
+"space": SubResource( 43 )
+}
+priority = 0
+
+[sub_resource type="Resource" id=45]
+script = ExtResource( 1 )
+From = "Jump"
+To = "Fall"
+Conditions = {
+}
+priority = 0
+
+[sub_resource type="Resource" id=46]
+script = ExtResource( 1 )
+From = "Jump(n)"
+To = "Fall"
+Conditions = {
+}
+priority = 0
+
+[sub_resource type="Resource" id=47]
+script = ExtResource( 2 )
+Name = "walk"
+
+[sub_resource type="Resource" id=48]
+script = ExtResource( 1 )
+From = "Walk"
+To = "Jump"
+Conditions = {
+"walk": SubResource( 47 )
 }
 priority = 0
 
@@ -56,16 +113,28 @@ script = ExtResource( 6 )
 Name = ""
 States = {
 "Entry": SubResource( 2 ),
-"State": SubResource( 36 ),
-"State3": SubResource( 37 ),
-"sdfsdf": SubResource( 17 )
+"Fall": SubResource( 42 ),
+"Idle": SubResource( 40 ),
+"Jump": SubResource( 37 ),
+"Jump(n)": SubResource( 41 ),
+"Walk": SubResource( 36 )
 }
 transitions = {
 "Entry": {
-"sdfsdf": SubResource( 5 )
+"Idle": SubResource( 5 )
 },
-"sdfsdf": {
-"State": SubResource( 39 )
+"Idle": {
+"Jump": SubResource( 44 ),
+"Walk": SubResource( 39 )
+},
+"Jump": {
+"Fall": SubResource( 45 )
+},
+"Jump(n)": {
+"Fall": SubResource( 46 )
+},
+"Walk": {
+"Jump": SubResource( 48 )
 }
 }
 

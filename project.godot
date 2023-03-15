@@ -24,7 +24,7 @@ config/icon="res://icon.png"
 
 [editor_plugins]
 
-enabled=PoolStringArray( "res://addons/FracturalCommons/plugin.cfg", "res://addons/FracturalFSM/plugin.cfg" )
+enabled=PoolStringArray(  )
 
 [gd2cs]
 
@@ -37,7 +37,7 @@ common/drop_mouse_on_gui_input_disabled=true
 
 [mono]
 
-project/assembly_name="GodotRollbackStateMachine"
+project/assembly_name="FracturalFSM"
 
 [physics]
 
