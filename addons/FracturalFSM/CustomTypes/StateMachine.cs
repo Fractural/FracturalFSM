@@ -170,7 +170,7 @@ namespace Fractural.StateMachine
         }
 
         /// <summary>
-        /// Add state, state name must be unique within this StateMachine, return state succeed if added else reutrn null
+        /// Add state, state name must be unique within this StateMachine, return state succeed if added else return null
         /// </summary>
         /// <param name="state"></param>
         /// <returns></returns>

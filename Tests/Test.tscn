@@ -1,4 +1,4 @@
-[gd_scene load_steps=17 format=2]
+[gd_scene load_steps=30 format=2]
 
 [ext_resource path="res://addons/FracturalFSM/CustomTypes/StateMachine.cs" type="Script" id=1]
 [ext_resource path="res://addons/FracturalFSM/CustomTypes/StateMachinePlayer.cs" type="Script" id=2]
@@ -10,64 +10,189 @@
 [sub_resource type="Resource" id=2]
 script = ExtResource( 3 )
 __meta__ = {
-"graph_offset": Vector2( 28, 60 )
+"graph_offset": Vector2( -12, 140 )
 }
 Name = "Entry"
-
-[sub_resource type="Resource" id=4]
-script = ExtResource( 3 )
-__meta__ = {
-"graph_offset": Vector2( 208, 60 )
-}
-Name = "State2"
-
-[sub_resource type="Resource" id=7]
-script = ExtResource( 3 )
-__meta__ = {
-"graph_offset": Vector2( 208, 160 )
-}
-Name = "State"
 
 [sub_resource type="Resource" id=8]
 script = ExtResource( 3 )
 __meta__ = {
-"graph_offset": Vector2( 328, 180 )
+"graph_offset": Vector2( 308, 220 )
 }
 Name = "Exit"
 
-[sub_resource type="Resource" id=12]
-script = ExtResource( 5 )
-Name = "Param"
-Comparation = 0
-value = false
+[sub_resource type="Resource" id=17]
+script = ExtResource( 3 )
+__meta__ = {
+"graph_offset": Vector2( 148, 380 )
+}
+Name = "State2"
+
+[sub_resource type="Resource" id=19]
+script = ExtResource( 3 )
+__meta__ = {
+"graph_offset": Vector2( 68, 120 )
+}
+Name = "Entry"
+
+[sub_resource type="Resource" id=20]
+script = ExtResource( 3 )
+__meta__ = {
+"graph_offset": Vector2( 288, 160 )
+}
+Name = "Exit"
+
+[sub_resource type="Resource" id=24]
+script = ExtResource( 3 )
+__meta__ = {
+"graph_offset": Vector2( 228, 120 )
+}
+Name = "State"
+
+[sub_resource type="Resource" id=25]
+script = ExtResource( 3 )
+__meta__ = {
+"graph_offset": Vector2( 61, 179 )
+}
+Name = "Entry"
+
+[sub_resource type="Resource" id=26]
+script = ExtResource( 3 )
+__meta__ = {
+"graph_offset": Vector2( 228, 300 )
+}
+Name = "Exit"
+
+[sub_resource type="Resource" id=27]
+script = ExtResource( 3 )
+__meta__ = {
+"graph_offset": Vector2( 308, 160 )
+}
+Name = "State2"
+
+[sub_resource type="Resource" id=28]
+script = ExtResource( 4 )
+From = "Entry"
+To = "State"
+Conditions = {
+}
+priority = 0
+
+[sub_resource type="Resource" id=29]
+script = ExtResource( 4 )
+From = "State"
+To = "State2"
+Conditions = {
+}
+priority = 0
+
+[sub_resource type="Resource" id=30]
+script = ExtResource( 4 )
+From = "State"
+To = "Exit"
+Conditions = {
+}
+priority = 0
+
+[sub_resource type="Resource" id=31]
+script = ExtResource( 1 )
+__meta__ = {
+"graph_offset": Vector2( 208, 100 )
+}
+Name = "State"
+States = {
+"Entry": SubResource( 25 ),
+"Exit": SubResource( 26 ),
+"State": SubResource( 24 ),
+"State2": SubResource( 27 )
+}
+transitions = {
+"Entry": {
+"State": SubResource( 28 )
+},
+"State": {
+"Exit": SubResource( 30 ),
+"State2": SubResource( 29 )
+}
+}
+
+[sub_resource type="Resource" id=21]
+script = ExtResource( 4 )
+From = "Entry"
+To = "State"
+Conditions = {
+}
+priority = 0
+
+[sub_resource type="Resource" id=22]
+script = ExtResource( 4 )
+From = "State"
+To = "Exit"
+Conditions = {
+}
+priority = 0
+
+[sub_resource type="Resource" id=23]
+script = ExtResource( 1 )
+__meta__ = {
+"graph_offset": Vector2( 185.5, 60 )
+}
+Name = "sdfsdfsdfS dfdftate"
+States = {
+"Entry": SubResource( 19 ),
+"Exit": SubResource( 20 ),
+"State": SubResource( 31 )
+}
+transitions = {
+"Entry": {
+"State": SubResource( 21 )
+},
+"State": {
+"Exit": SubResource( 22 )
+}
+}
 
 [sub_resource type="Resource" id=13]
 script = ExtResource( 6 )
-Name = "Param1"
+Name = "asdf "
 Comparation = 0
 value = 0
 
 [sub_resource type="Resource" id=14]
 script = ExtResource( 6 )
-Name = "Param2"
+Name = "asdfas"
 Comparation = 0
 value = 0
+
+[sub_resource type="Resource" id=12]
+script = ExtResource( 5 )
+Name = "sdfs"
+Comparation = 0
+value = false
 
 [sub_resource type="Resource" id=5]
 script = ExtResource( 4 )
 From = "Entry"
 To = "State2"
 Conditions = {
-"Param": SubResource( 12 ),
-"Param1": SubResource( 13 ),
-"Param2": SubResource( 14 )
+"asdf ": SubResource( 13 ),
+"asdfas": SubResource( 14 ),
+"sdfs": SubResource( 12 )
 }
 priority = 0
 
 [sub_resource type="Resource" id=15]
 script = ExtResource( 4 )
 From = "Entry"
-To = "State"
+To = "sdfsdfsdfS dfdftate"
+Conditions = {
+}
+priority = 0
+
+[sub_resource type="Resource" id=16]
+script = ExtResource( 4 )
+From = "State2"
+To = "sdfsdfsdfS dfdftate"
 Conditions = {
 }
 priority = 0
@@ -78,13 +203,16 @@ Name = ""
 States = {
 "Entry": SubResource( 2 ),
 "Exit": SubResource( 8 ),
-"State": SubResource( 7 ),
-"State2": SubResource( 4 )
+"State2": SubResource( 17 ),
+"sdfsdfsdfS dfdftate": SubResource( 23 )
 }
 transitions = {
 "Entry": {
-"State": SubResource( 15 ),
-"State2": SubResource( 5 )
+"State2": SubResource( 5 ),
+"sdfsdfsdfS dfdftate": SubResource( 15 )
+},
+"State2": {
+"sdfsdfsdfS dfdftate": SubResource( 16 )
 }
 }
 

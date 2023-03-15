@@ -8,6 +8,8 @@ namespace Fractural.StateMachine
 {
     /// <summary>
     /// Helper class instance for traversing state machine directories (nested states).
+    /// 
+    /// ie. root --> someState --> someOtherState --> endState
     /// </summary>
     public struct StateDirectory
     {
@@ -15,7 +17,7 @@ namespace Fractural.StateMachine
         /// <summary>
         /// Get current full path
         /// </summary>
-        public string Current => string.Join(",", new ArraySegment<string>(dirs, BaseIndex, BaseIndex - currentIndex + 1));
+        public string CurrentPath => string.Join(",", new ArraySegment<string>(dirs, BaseIndex, BaseIndex - currentIndex + 1));
         /// <summary>
         /// Get base state name
         /// </summary>
@@ -47,7 +49,7 @@ namespace Fractural.StateMachine
         /// Move to next level && return state if exists, else null
         /// </summary>
         /// <returns></returns>
-        public string Next()
+        public string GotoNext()
         {
             if (HasNext)
             {
@@ -62,9 +64,9 @@ namespace Fractural.StateMachine
         /// Move to previous level && return state if exists, else null
         /// </summary>
         /// <returns></returns>
-        public string Back()
+        public string GotoPrevious()
         {
-            if (HasBack)
+            if (HasPrevious)
             {
                 currentIndex -= 1;
                 return CurrentEnd;
@@ -92,7 +94,7 @@ namespace Fractural.StateMachine
         /// <summary>
         /// Check if directory has previous level
         /// </summary>
-        public bool HasBack => currentIndex > 0;
+        public bool HasPrevious => currentIndex > 0;
 
         /// <summary>
         /// Get current end state name of path
@@ -101,7 +103,7 @@ namespace Fractural.StateMachine
         {
             get
             {
-                var currentPath = Current;
+                var currentPath = CurrentPath;
                 return currentPath.Right(currentPath.FindLast("/") + 1);
             }
         }

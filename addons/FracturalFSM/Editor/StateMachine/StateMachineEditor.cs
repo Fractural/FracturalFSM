@@ -156,8 +156,8 @@ namespace Fractural.StateMachine
 
         #region Private fields
         private Connection reconnectingConnection;
-        private int lastIndex = 0;
-        private string lastPath = "";
+        private int previousIndex = 0;
+        private string previousPath = "";
         private StateNode contextNode;
         private string currentState = "";
         private IList<string> lastStack = new List<string>();
@@ -335,22 +335,30 @@ namespace Fractural.StateMachine
             var path = pathViewer.SelectDir(dir);
             SelectLayer(GetLayer(path));
 
-            if (lastIndex > index)
+            if (previousIndex > index)
             {
                 // Going backward
-                var endStateParentPath = StateMachinePlayer.PathBackward(lastPath);
-                var endStateName = StateMachinePlayer.PathEndDir(lastPath);
-                var layer = content.GetNodeOrNull<StateMachineEditorLayer>(endStateParentPath);
+                // rootState --> someState --> someOtherState --> endState
+                //                     ^                            ^
+                //                     index                        lastIndex
+                // '--------------------------------.-------'     '---.--'
+                //                              endStateParentPath  endStateName
+                //                      
+                var endStateBaseDirectory = previousPath.GetBaseDir();
+                var endStateName = previousPath.GetFileName();
+                var layer = content.GetNodeOrNull<StateMachineEditorLayer>(endStateBaseDirectory);
                 if (layer != null)
                 {
                     var node = layer.ContentNodes.GetNodeOrNull<StateNode>(endStateName);
-                    if (node != null && node.State is StateMachine)
-                        // Convert state machine node back to state node
-                        ConvertToState(layer, node);
+                    if (node != null && node.State is StateMachine stateMachine && stateMachine.States.Count == 0)
+                    {
+                        // Convert empty state machine node back to state node
+                        ConvertToStateAndRemoveLayer(previousPath);
+                    }
                 }
             }
-            lastIndex = index;
-            lastPath = path;
+            previousIndex = index;
+            previousPath = path;
         }
 
         /// <summary>
@@ -413,14 +421,7 @@ namespace Fractural.StateMachine
 
         private void OnConvertToStateConfirmationConfirmed()
         {
-            ConvertToState(CurrentLayer, contextNode);
-            contextNode.Update(); // Update display of node
-
-            // Remove layer
-            var path = GD.Str(pathViewer.GetCwd(), "/", contextNode.Name);
-            var layer = GetLayer(path);
-            if (layer != null)
-                layer.QueueFree();
+            ConvertToStateAndRemoveLayer(pathViewer.GetCwd() + "/" + contextNode.Name);
             contextNode = null;
         }
 
@@ -512,7 +513,7 @@ namespace Fractural.StateMachine
                 {
                     GD.Print("Corrupted FracturalFSM StateMachine Resource fixed, save to apply the fix.");
                 }
-                DrawGraph(rootLayer);
+                PopulateStateLayer(rootLayer);
                 CheckHasEntry();
             }
         }
@@ -555,37 +556,24 @@ namespace Fractural.StateMachine
 
         public StateMachineEditorLayer CreateLayer(StateNode node)
         {
-            // Create/Move to new layer
-            var newStateMachine = ConvertToStateMachine(CurrentLayer, node);
-            // Determine current layer path
-            var parentPath = pathViewer.GetCwd();
-            var path = GD.Str(parentPath, "/", node.Name);
-            var layer = GetLayer(path);
-            pathViewer.AddDir(node.State.Name);// Before selectLayer, so pathViewer will be updated in OnLayerSelected
-            if (layer == null)
-            {
-                // New layer to spawn
-                layer = AddLayerTo(GetLayer(parentPath));
-                layer.Name = node.State.Name;
-                layer.StateMachine = newStateMachine;
-                DrawGraph(layer);
-            }
-            lastIndex = pathViewer.GetChildCount() - 1;
-            lastPath = path;
-            return layer;
-
+            var path = pathViewer.GetCwd() + "/" + node.Name;
+            var result = TryConvertToStateMachineAndAddLayer(path);
+            previousIndex = pathViewer.GetChildCount() - 1;
+            previousPath = path;
+            return result;
         }
 
         public StateMachineEditorLayer OpenLayer(string path)
         {
             var dir = new StateDirectory(path);
             dir.Goto(dir.EndIndex);
-            dir.Back();
+            dir.GotoPrevious();
             var nextLayer = GetNextLayer(dir, GetLayer("root"));
             SelectLayer(nextLayer);
             return nextLayer;
         }
 
+        // TODO: Figure out what "next layer" means???
         /// <summary>
         /// Recursively get next layer
         /// </summary>
@@ -595,7 +583,7 @@ namespace Fractural.StateMachine
         public StateMachineEditorLayer GetNextLayer(StateDirectory dir, StateMachineEditorLayer baseLayer)
         {
             var nextLayer = baseLayer;
-            var nextLayerName = dir.Next();
+            var nextLayerName = dir.GotoNext();
             if (nextLayerName != null)
             {
                 nextLayer = baseLayer.GetNodeOrNull<StateMachineEditorLayer>(nextLayerName);
@@ -605,10 +593,10 @@ namespace Fractural.StateMachine
                 }
                 else
                 {
-                    var toDir = new StateDirectory(dir.Current);
+                    var toDir = new StateDirectory(dir.CurrentPath);
 
                     toDir.Goto(toDir.EndIndex);
-                    toDir.Back();
+                    toDir.GotoPrevious();
                     var node = baseLayer.ContentNodes.GetNodeOrNull<StateNode>(toDir.CurrentEnd);
                     nextLayer = GetNextLayer(dir, CreateLayer(node));
                 }
@@ -621,8 +609,8 @@ namespace Fractural.StateMachine
             var currentDir = new StateDirectory(state);
 
             currentDir.Goto(currentDir.EndIndex);
-            currentDir.Back();
-            return GetLayer(GD.Str("root/", currentDir.Current));
+            currentDir.GotoPrevious();
+            return GetLayer(GD.Str("root/", currentDir.CurrentPath));
 
         }
 
@@ -668,43 +656,81 @@ namespace Fractural.StateMachine
             }
         }
 
-        private StateMachine ConvertToStateMachine(StateMachineEditorLayer layer, StateNode stateNnode)
+        /// <summary>
+        /// Converts a <paramref name="stateNode"/> inside of <paramref name="layer"/> from a State to a StateMachine.
+        /// </summary>
+        /// <param name="layer"></param>
+        /// <param name="stateNode"></param>
+        /// <returns></returns>
+        private StateMachineEditorLayer TryConvertToStateMachineAndAddLayer(string pathToState)
         {
-            // Convert State to StateMachine
-            StateMachine newStateMachine;
-            if (stateNnode.State is StateMachine stateMachine)
-                newStateMachine = stateMachine;
-            else
-            {
-                newStateMachine = CSharpScript<StateMachine>.New();
+            var stateBaseDirectory = pathToState.GetBaseDir();
+            var stateName = pathToState.GetFileName();
 
-                newStateMachine.Name = stateNnode.State.Name;
-                newStateMachine.GraphOffset = stateNnode.State.GraphOffset;
-                layer.StateMachine.RemoveState(stateNnode.State.Name);
-                layer.StateMachine.AddState(newStateMachine);
-                stateNnode.State = newStateMachine;
+            var stateBaseDirectoryLayer = GetLayer(stateBaseDirectory);
+            if (stateBaseDirectoryLayer == null) return null;
+            var stateNode = stateBaseDirectoryLayer.ContentNodes.GetNodeOrNull<StateNode>(stateName);
+
+            // Convert State to StateMachine only if the node's State is not a StateMachine
+            // NOTE: We can't use a !(stateNode.State is State) check here because
+            //       StateMachine is a subclass of State, so this condition would mistake
+            //       StateMachine for a State
+            if (!(stateNode.State is StateMachine))
+            {
+                StateMachine newStateMachine = CSharpScript<StateMachine>.New();
+                newStateMachine.Name = stateNode.State.Name;
+                newStateMachine.GraphOffset = stateNode.State.GraphOffset;
+                stateBaseDirectoryLayer.StateMachine.RemoveState(stateNode.State.Name);
+                stateBaseDirectoryLayer.StateMachine.AddState(newStateMachine);
+                stateNode.State = newStateMachine;
             }
-            return newStateMachine;
+
+            var stateMachineLayer = GetLayer(pathToState);
+            pathViewer.AddDir(stateNode.State.Name);
+            if (stateMachineLayer == null)
+            {
+                // New layer to spawn
+                stateMachineLayer = AddLayerTo(stateBaseDirectoryLayer);
+                stateMachineLayer.Name = stateNode.State.Name;
+                stateMachineLayer.StateMachine = stateNode.State as StateMachine;
+                PopulateStateLayer(stateMachineLayer);
+            }
+            return stateMachineLayer;
         }
 
-        private State ConvertToState(StateMachineEditorLayer layer, StateNode statNnode)
+        /// <summary>
+        /// Converts a <paramref name="stateNode"/> inside of <paramref name="layer"/> from a StateMachine to a  State.
+        /// </summary>
+        /// <param name="layer"></param>
+        /// <param name="stateNode"></param>
+        /// <returns></returns>
+        private void ConvertToStateAndRemoveLayer(string pathToStateMachine)
         {
-            // Convert StateMachine to State
-            State newState;
-            if (statNnode.State is StateMachine)
-            {
-                newState = CSharpScript<State>.New();
-                newState.Name = statNnode.State.Name;
-                newState.GraphOffset = statNnode.State.GraphOffset;
-                layer.StateMachine.RemoveState(statNnode.State.Name);
-                layer.StateMachine.AddState(newState);
-                statNnode.State = newState;
-            }
-            else
-            {
-                newState = statNnode.State;
-            }
-            return newState;
+            var stateBaseDirectory = pathToStateMachine.GetBaseDir();
+            var stateName = pathToStateMachine.GetFileName();
+
+            // Layer that contains the state as a node
+            var stateBaseDirectoryLayer = GetLayer(stateBaseDirectory);
+            if (stateBaseDirectoryLayer == null) return;
+            var stateNode = stateBaseDirectoryLayer.ContentNodes.GetNodeOrNull<StateNode>(stateName);
+            // TODO: Refactor accessing flowchart node through method instead of directory fetching ContentNodes
+
+            // Convert State to StateMachine only if the node's State is not a State
+            if (!(stateNode.State is StateMachine))
+                return;
+
+            State newState = CSharpScript<State>.New();
+            newState.Name = stateNode.State.Name;
+            newState.GraphOffset = stateNode.State.GraphOffset;
+            stateBaseDirectoryLayer.StateMachine.RemoveState(stateNode.State.Name);
+            stateBaseDirectoryLayer.StateMachine.AddState(newState);
+            stateNode.State = newState;
+
+            // Remove layer that represents this state
+            // Note that this layer is a child of dirLayer.
+            var stateMachineLayer = GetLayer(pathToStateMachine);
+            if (stateMachineLayer != null)
+                stateMachineLayer.QueueFree();
         }
 
         public override FlowChartLayer CreateLayerInstance()
@@ -765,34 +791,32 @@ namespace Fractural.StateMachine
         }
 
         /// <summary>
-        /// Intialize editor with current editing StateMachine
+        /// Intialize the node and connections for a state layer using its StateMachine
         /// </summary>
         /// <param name="layer"></param>
-        public void DrawGraph(FlowChartLayer layer)
+        public void PopulateStateLayer(StateMachineEditorLayer layer)
         {
-            if (!(layer is StateMachineEditorLayer stateLayer)) return;
-
-            foreach (string stateKey in stateLayer.StateMachine.States.Keys)
+            foreach (string stateKey in layer.StateMachine.States.Keys)
             {
-                var state = stateLayer.StateMachine.States.Get<State>(stateKey);
+                var state = layer.StateMachine.States.Get<State>(stateKey);
                 var newNode = StateNodePrefab.Instance<StateNode>();
                 newNode.Theme.GetStylebox<StyleBoxFlat>("focus", "FlowChartNode").BorderColor = editorAccentColor;
                 newNode.Name = stateKey; // Set before addNode to let engine handle duplicate name
-                AddNode(stateLayer, newNode);
+                AddNode(layer, newNode);
                 // Set after addNode to make sure UIs are initialized
                 newNode.State = state;
                 newNode.State.Name = stateKey;
                 newNode.RectPosition = state.GraphOffset;
             }
-            foreach (string stateKey in stateLayer.StateMachine.States.Keys)
+            foreach (string stateKey in layer.StateMachine.States.Keys)
             {
-                var fromTransitions = stateLayer.StateMachine.GetNodeTransitionsDict(stateKey);
+                var fromTransitions = layer.StateMachine.GetNodeTransitionsDict(stateKey);
                 if (fromTransitions != null)
                 {
                     foreach (Transition transition in fromTransitions.Values)
                     {
-                        ConnectNode(stateLayer, transition.From, transition.To);
-                        var transitionLine = stateLayer.GetConnection(transition.From, transition.To).Line as TransitionLine;
+                        ConnectNode(layer, transition.From, transition.To);
+                        var transitionLine = layer.GetConnection(transition.From, transition.To).Line as TransitionLine;
                         transitionLine.Transition = transition;
                     }
                 }
@@ -878,9 +902,16 @@ namespace Fractural.StateMachine
 
             if (pathViewer.GetCwd() != "root") // Nested state
             {
-                if (!CurrentLayer.StateMachine.HasExit && !HasMessage(ExitStateMissingMsg))
-                    AddMessage(ExitStateMissingMsg);
-
+                if (!CurrentLayer.StateMachine.HasExit)
+                {
+                    if (!HasMessage(ExitStateMissingMsg))
+                        AddMessage(ExitStateMissingMsg);
+                }
+                else
+                {
+                    if (HasMessage(ExitStateMissingMsg))
+                        RemoveMessage(ExitStateMissingMsg);
+                }
             }
             else
             {
@@ -1124,7 +1155,7 @@ namespace Fractural.StateMachine
                     {
                         // Open into next layer
                         toDir.Goto(toDir.EndIndex);
-                        toDir.Back();
+                        toDir.GotoPrevious();
                         var node = focusedLayer.ContentNodes.GetNodeOrNull<StateNode>(toDir.CurrentEnd);
                         if (node != null)
                         {
@@ -1142,7 +1173,7 @@ namespace Fractural.StateMachine
                     if (toDir.Dirs.Length != fromDir.Dirs.Length)
                     {
                         toDir.Goto(toDir.EndIndex);
-                        var n = toDir.Back();
+                        var n = toDir.GotoPrevious();
                         if (n == null)
                         {
                             n = "root";

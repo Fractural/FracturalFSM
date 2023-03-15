@@ -19,7 +19,7 @@ namespace Fractural.StateMachine
         [OnReadyGet("MarginContainer/VBoxContainer")]
         private VBoxContainer conditionLabelContainer;
 
-        private Transition transition;
+        private Transition transition = CSharpScript<Transition>.New();
         public Transition Transition
         {
             get => transition;
@@ -54,32 +54,36 @@ namespace Fractural.StateMachine
             }
         }
 
-        public TransitionLine()
-        {
-            Transition = CSharpScript<Transition>.New();
-        }
-
         public override void _Draw()
         {
             base._Draw();
 
             var absRectRotation = Mathf.Abs(RectRotation);
             var isFlip = absRectRotation > 90.0;
-            var isUpright = absRectRotation > 90.0 - uprightAngleRange && absRectRotation < 90.0 + uprightAngleRange;
+            // We are +/- upRightAngleRange from 90 degrees (which is vertical)
+            var isUpright = absRectRotation > (90.0 - uprightAngleRange) && absRectRotation < (90.0 + uprightAngleRange);
             if (isUpright)
             {
-                var xOffset = labelMargin.RectSize.x / 2f;
-                var yOffset = -labelMargin.RectSize.y;
-
                 labelMargin.RectRotation = -RectRotation;
+
+                // Because we're rotated 90 degrees:
+                // - x = vertical
+                // - y = horizontal
 
                 if (RectRotation > 0)
                 {
-                    labelMargin.RectPosition = new Vector2((RectSize.x - xOffset) / 2, 0);
+                    // RectSize = line's rect size
+                    // RectSize.x = line width
+                    // RectSize.x / 2 = half of line width
+
+                    // We are pointing up, so show on right
+                    labelMargin.RectPosition = new Vector2((RectSize.x - labelMargin.RectSize.y) / 2, 0);
                 }
                 else
                 {
-                    labelMargin.RectPosition = new Vector2((RectSize.x + xOffset) / 2, yOffset * 2);
+                    // We are pointing down, so show on left
+                    // -labelMargin.RectSize.x moves the entire box over to the left
+                    labelMargin.RectPosition = new Vector2((RectSize.x + labelMargin.RectSize.y) / 2, -labelMargin.RectSize.x);
                 }
             }
             else
@@ -133,6 +137,8 @@ namespace Fractural.StateMachine
                     label.Text = valueDetails;
                 }
             }
+            // Force the label margin container to be the min size
+            labelMargin.RectSize = Vector2.Zero;
             Update();
         }
 

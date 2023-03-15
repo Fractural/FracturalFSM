@@ -183,7 +183,7 @@ namespace Fractural.StateMachine
             if (!isParamEdited && !wasTransited)
                 return;
             var from = Current;
-            var localParams = localParameters.Get(PathBackward(from), new GDC.Dictionary());
+            var localParams = localParameters.Get(GetDirectoryFromPath(from), new GDC.Dictionary());
             var nextState = StateMachine.Transit(Current, parameters, localParams);
             if (nextState != null)
             {
@@ -218,13 +218,13 @@ namespace Fractural.StateMachine
             if (to.EndsWith(State.EntryState) && to.Length() > State.EntryState.Length())
             {
                 // Nexted Entry state
-                var state = PathBackward(Current);
+                var state = GetDirectoryFromPath(Current);
                 EmitSignal(nameof(Entered), state);
             }
             else if (to.EndsWith(State.ExitState) && to.Length() > State.ExitState.Length())
             {
                 // Nested Exit state, clear "local" params
-                var state = PathBackward(Current);
+                var state = GetDirectoryFromPath(Current);
                 ClearParam(state, false); // Clearing params internally, do !update
                 EmitSignal(nameof(Exited), state);
 
@@ -402,8 +402,8 @@ namespace Fractural.StateMachine
             string path = "";
             if (name.Contains("/"))
             {
-                path = PathBackward(name);
-                name = PathEndDir(name);
+                path = GetDirectoryFromPath(name);
+                name = GetStateFromPath(name);
             }
             SetNestedParam(path, name, value, autoUpdate);
 
@@ -441,8 +441,8 @@ namespace Fractural.StateMachine
             string path = "";
             if (name.Contains("/"))
             {
-                path = PathBackward(name);
-                name = PathEndDir(name);
+                path = GetDirectoryFromPath(name);
+                name = GetStateFromPath(name);
             }
             return EraseNestedParam(path, name, autoUpdate);
         }
@@ -518,8 +518,8 @@ namespace Fractural.StateMachine
             string path = "";
             if (name.Contains("/"))
             {
-                path = PathBackward(name);
-                name = PathEndDir(name);
+                path = GetDirectoryFromPath(name);
+                name = GetStateFromPath(name);
             }
             return GetNestedParam(path, name, defaultReturn);
 
@@ -551,8 +551,8 @@ namespace Fractural.StateMachine
             string path = "";
             if (name.Contains("/"))
             {
-                path = PathBackward(name);
-                name = PathEndDir(name);
+                path = GetDirectoryFromPath(name);
+                name = GetStateFromPath(name);
             }
             return HasNestedParam(path, name);
 
@@ -609,12 +609,14 @@ namespace Fractural.StateMachine
             return path;
         }
 
+        // TODO: Refactor these helper methods elsewhere
+
         /// <summary>
         /// Return parent path, "path/to/state" return "path/to"
         /// </summary>
         /// <param name="path"></param>
         /// <returns></returns>
-        public static string PathBackward(string path)
+        public static string GetDirectoryFromPath(string path)
         {
             return path.Substr(0, path.FindLast("/"));
         }
@@ -624,7 +626,7 @@ namespace Fractural.StateMachine
         /// </summary>
         /// <param name="path"></param>
         /// <returns></returns>
-        public static string PathEndDir(string path)
+        public static string GetStateFromPath(string path)
         {
             return path.Right(path.FindLast("/") + 1);
         }

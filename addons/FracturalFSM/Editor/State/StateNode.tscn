@@ -8,7 +8,7 @@ border_width_left = 1
 border_width_top = 1
 border_width_right = 1
 border_width_bottom = 1
-border_color = Color( 0.960784, 0.772549, 0.333333, 1 )
+border_color = Color( 0.831373, 0.266667, 0.341176, 1 )
 corner_radius_top_left = 4
 corner_radius_top_right = 4
 corner_radius_bottom_right = 4
@@ -51,16 +51,14 @@ StateNode/styles/nested_normal = SubResource( 4 )
 
 [sub_resource type="StyleBoxEmpty" id=6]
 
-[node name="StateNode" type="HBoxContainer"]
+[node name="StateNode" type="CenterContainer"]
 margin_right = 40.0
 margin_bottom = 40.0
 grow_horizontal = 2
 grow_vertical = 2
+mouse_filter = 1
 theme = SubResource( 5 )
 script = ExtResource( 1 )
-__meta__ = {
-"_edit_use_anchors_": false
-}
 
 [node name="MarginContainer" type="MarginContainer" parent="."]
 margin_right = 64.0
