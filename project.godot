@@ -19,7 +19,7 @@ Main/GenerateVersionPreprocessorDefines=false
 [application]
 
 config/name="FracturalFSM"
-run/main_scene="res://addons/FracturalFSM/Editor/Transition/TransitionEditor.tscn"
+run/main_scene="res://Tests/2DTest.tscn"
 config/icon="res://icon.png"
 
 [editor_plugins]

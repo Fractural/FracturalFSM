@@ -1102,6 +1102,13 @@ namespace Fractural.StateMachine
             if (oldName == newName)
                 return;
 
+            if (newName.Empty())
+            {
+                GD.PushWarning($"Illegal State Name: State name cannot be empty!");
+                node.RevertStateName();
+                return;
+            }
+
             if (newName.Contains("/") || newName.Contains("\\")) // No back/forward-slash
             {
                 GD.PushWarning($"Illegal State Name: / && \\ are !allowed in State Name({newName})");
@@ -1119,6 +1126,9 @@ namespace Fractural.StateMachine
             RenameNode(CurrentLayer, node.Name, newName);
             node.State.Name = newName;
             node.Name = newName;
+
+            UpdateConnectionLines(node.Name);
+
             // Rename layer as well
             var path = GD.Str(pathViewer.GetCwd(), "/", node.Name);
             var layer = GetLayer(path);

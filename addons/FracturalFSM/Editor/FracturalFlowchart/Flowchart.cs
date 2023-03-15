@@ -541,18 +541,7 @@ namespace Fractural.Flowchart
                                     EmitSignal(nameof(Dragged), selected, dragDelta);
 
                                     // Update connection pos
-                                    foreach (string from in CurrentLayer.Connections.Keys)
-                                    {
-                                        var connectionsFrom = CurrentLayer.Connections.Get<GDC.Dictionary>(from);
-                                        foreach (string to in connectionsFrom.Keys)
-                                        {
-                                            if (from == selected.Name || to == selected.Name)
-                                            {
-                                                var connection = connectionsFrom.Get<Connection>(to);
-                                                connection.Join();
-                                            }
-                                        }
-                                    }
+                                    UpdateConnectionLines(selected.Name);
                                 }
                             }
                             dragEndPos = GetLocalMousePosition();
@@ -813,6 +802,22 @@ namespace Fractural.Flowchart
         #endregion
 
         #region Public API
+        public void UpdateConnectionLines(string nodeName)
+        {
+            foreach (string from in CurrentLayer.Connections.Keys)
+            {
+                var connectionsFrom = CurrentLayer.Connections.Get<GDC.Dictionary>(from);
+                foreach (string to in connectionsFrom.Keys)
+                {
+                    if (from == nodeName || to == nodeName)
+                    {
+                        var connection = connectionsFrom.Get<Connection>(to);
+                        connection.Join();
+                    }
+                }
+            }
+        }
+
         public void SetZoomAroundCenter(float newZoom, Vector2 center)
         {
             var clampedValue = Mathf.Clamp(newZoom, ZoomMin, ZoomMax);
