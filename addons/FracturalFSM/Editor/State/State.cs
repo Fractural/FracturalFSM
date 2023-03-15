@@ -37,7 +37,7 @@ namespace Fractural.StateMachine
         }
 
         /// <summary> 
-        /// Position in FlowChart stored as meta, for editor only
+        /// Position in Flowchart stored as meta, for editor only
         /// </summary>
         public Vector2 GraphOffset
         {

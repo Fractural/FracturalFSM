@@ -44,8 +44,8 @@ border_width_bottom = 3
 shadow_size = 2
 
 [sub_resource type="Theme" id=5]
-FlowChartNode/styles/focus = SubResource( 1 )
-FlowChartNode/styles/normal = SubResource( 2 )
+FlowchartNode/styles/focus = SubResource( 1 )
+FlowchartNode/styles/normal = SubResource( 2 )
 StateNode/styles/nested_focus = SubResource( 3 )
 StateNode/styles/nested_normal = SubResource( 4 )
 

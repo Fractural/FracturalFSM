@@ -6,7 +6,7 @@ using Fractural.Utils;
 using System.Linq;
 using System.Collections;
 using System.Collections.Generic;
-using Fractural.FlowChart;
+using Fractural.Flowchart;
 
 namespace Fractural.StateMachine
 {

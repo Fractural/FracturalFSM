@@ -5,12 +5,12 @@ using GDC = Godot.Collections;
 using Fractural.GodotCodeGenerator.Attributes;
 using Fractural.Utils;
 using System.Collections.Generic;
-using Fractural.FlowChart;
+using Fractural.Flowchart;
 
 namespace Fractural.StateMachine
 {
     [Tool]
-    public partial class StateMachineEditor : FlowChart.FlowChart
+    public partial class StateMachineEditor : Flowchart.Flowchart
     {
         [Signal] public delegate void InspectorChanged(string property);// Inform plugin to refresh inspector
         [Signal] public delegate void DebugModeChanged(bool newDebugMode);
@@ -163,9 +163,9 @@ namespace Fractural.StateMachine
         private IList<string> lastStack = new List<string>();
         #endregion
 
-        #region FlowChart Method/Property Hiding
+        #region Flowchart Method/Property Hiding
         // We need to change methods to return StateMachineEditorLayer
-        // rather than FlowChartLayer
+        // rather than FlowchartLayer
 
         public new StateMachineEditorLayer CurrentLayer
         {
@@ -233,7 +233,7 @@ namespace Fractural.StateMachine
             editorAccentColor = theme.GetColor("accent_color", "Editor");
             transitionArrowIcon = theme.GetIcon("TransitionImmediateBig", "EditorIcons");
 
-            // CurrentLayer should be set by now, since it's automatically set in the constructor of FlowChart with Select
+            // CurrentLayer should be set by now, since it's automatically set in the constructor of Flowchart with Select
             // However the layer would have been created with the old accent color, so we're going to inject
             // the new accent color we just got from the theme into it.
             CurrentLayer.Construct(editorAccentColor);
@@ -375,7 +375,7 @@ namespace Fractural.StateMachine
         private void OnContextMenuIndexPressed(int index)
         {
             var newNode = StateNodePrefab.Instance<StateNode>();
-            newNode.Theme.GetStylebox<StyleBoxFlat>("focus", "FlowChartNode").BorderColor = editorAccentColor;
+            newNode.Theme.GetStylebox<StyleBoxFlat>("focus", "FlowchartNode").BorderColor = editorAccentColor;
             switch (index)
             {
                 case 0: // Add State
@@ -506,7 +506,7 @@ namespace Fractural.StateMachine
             // Reset layers & path viewer
             foreach (Node child in rootLayer.GetChildren())
             {
-                if (child is FlowChartLayer layer)
+                if (child is FlowchartLayer layer)
                 {
                     rootLayer.RemoveChild(child);
                     child.QueueFree();
@@ -740,18 +740,18 @@ namespace Fractural.StateMachine
                 stateMachineLayer.QueueFree();
         }
 
-        public override FlowChartLayer CreateLayerInstance()
+        protected override FlowchartLayer CreateLayerInstance()
         {
             var layer = StateLayerPrefab.Instance<StateMachineEditorLayer>();
             layer.Construct(editorAccentColor);
             return layer;
         }
 
-        public override FlowChartLine CreateLineInstance()
+        protected override FlowchartLine CreateLineInstance()
         {
             var line = TransitionLinePrefab.Instance<TransitionLine>();
-            line.Theme.GetStylebox<StyleBoxFlat>("focus", "FlowChartLine").ShadowColor = editorAccentColor;
-            line.Theme.SetIcon("arrow", "FlowChartLine", transitionArrowIcon);
+            line.Theme.GetStylebox<StyleBoxFlat>("focus", "FlowchartLine").ShadowColor = editorAccentColor;
+            line.Theme.SetIcon("arrow", "FlowchartLine", transitionArrowIcon);
             return line;
         }
 
@@ -783,7 +783,7 @@ namespace Fractural.StateMachine
         /// Clear editor
         /// </summary>
         /// <param name="layer"></param>
-        public void ClearGraph(FlowChartLayer layer)
+        public void ClearGraph(FlowchartLayer layer)
         {
             ClearConnections();
             foreach (Control child in layer.ContentNodes.GetChildren())
@@ -807,7 +807,7 @@ namespace Fractural.StateMachine
             {
                 var state = layer.StateMachine.States.Get<State>(stateKey);
                 var newNode = StateNodePrefab.Instance<StateNode>();
-                newNode.Theme.GetStylebox<StyleBoxFlat>("focus", "FlowChartNode").BorderColor = editorAccentColor;
+                newNode.Theme.GetStylebox<StyleBoxFlat>("focus", "FlowchartNode").BorderColor = editorAccentColor;
                 newNode.Name = stateKey; // Set before addNode to let engine handle duplicate name
                 AddNode(layer, newNode);
                 // Set after addNode to make sure UIs are initialized
@@ -928,7 +928,7 @@ namespace Fractural.StateMachine
         }
 
         #region Flowchart Lifetime Calls
-        protected override void OnLayerSelected(FlowChartLayer layer)
+        protected override void OnLayerSelected(FlowchartLayer layer)
         {
             if (layer != null)
             {
@@ -938,13 +938,13 @@ namespace Fractural.StateMachine
             }
         }
 
-        protected override void OnLayerDeselected(FlowChartLayer layer)
+        protected override void OnLayerDeselected(FlowchartLayer layer)
         {
             if (layer != null)
                 layer.HideContent();
         }
 
-        protected override void OnNodeDragged(FlowChartLayer layer, Control node, Vector2 dragDelta)
+        protected override void OnNodeDragged(FlowchartLayer layer, Control node, Vector2 dragDelta)
         {
             if (!(node is StateNode stateNode)) return;
 
@@ -952,7 +952,7 @@ namespace Fractural.StateMachine
             OnEdited();
         }
 
-        protected override void OnNodeAdded(FlowChartLayer layer, Control newNode)
+        protected override void OnNodeAdded(FlowchartLayer layer, Control newNode)
         {
             if (!(newNode is StateNode stateNode) || !(layer is StateMachineEditorLayer stateLayer)) return;
 
@@ -968,7 +968,7 @@ namespace Fractural.StateMachine
             OnEdited();
         }
 
-        protected override void OnNodeRemoved(FlowChartLayer layer, Control node)
+        protected override void OnNodeRemoved(FlowchartLayer layer, Control node)
         {
             if (!(node is StateNode stateNode) || !(layer is StateMachineEditorLayer stateLayer)) return;
 
@@ -985,7 +985,7 @@ namespace Fractural.StateMachine
             OnEdited();
         }
 
-        protected override void OnNodeConnected(FlowChartLayer layer, string from, string to)
+        protected override void OnNodeConnected(FlowchartLayer layer, string from, string to)
         {
             if (!(layer is StateMachineEditorLayer stateLayer)) return;
 
@@ -1012,7 +1012,7 @@ namespace Fractural.StateMachine
 
         }
 
-        protected override void OnNodeDisconnected(FlowChartLayer layer, string from, string to)
+        protected override void OnNodeDisconnected(FlowchartLayer layer, string from, string to)
         {
             if (!(layer is StateMachineEditorLayer stateLayer)) return;
             stateLayer.StateMachine.RemoveTransition(from, to);
@@ -1020,14 +1020,14 @@ namespace Fractural.StateMachine
 
         }
 
-        protected override void OnNodeReconnectBegin(FlowChartLayer layer, string from, string to)
+        protected override void OnNodeReconnectBegin(FlowchartLayer layer, string from, string to)
         {
             if (!(layer is StateMachineEditorLayer stateLayer)) return;
             reconnectingConnection = stateLayer.GetConnection(from, to);
             stateLayer.StateMachine.RemoveTransition(from, to);
         }
 
-        protected override void OnNodeReconnectEnd(FlowChartLayer layer, string from, string to)
+        protected override void OnNodeReconnectEnd(FlowchartLayer layer, string from, string to)
         {
             if (!(layer is StateMachineEditorLayer stateLayer)) return;
             var transition = (reconnectingConnection.Line as TransitionLine).Transition;
@@ -1037,7 +1037,7 @@ namespace Fractural.StateMachine
             Select(reconnectingConnection.Line);
         }
 
-        protected override void OnNodeReconnectFailed(FlowChartLayer layer, string from, string to)
+        protected override void OnNodeReconnectFailed(FlowchartLayer layer, string from, string to)
         {
             if (!(layer is StateMachineEditorLayer stateLayer)) return;
             var transition = (reconnectingConnection.Line as TransitionLine).Transition;
@@ -1047,7 +1047,7 @@ namespace Fractural.StateMachine
 
         }
 
-        protected override bool _RequestConnectFrom(FlowChartLayer layer, string from)
+        protected override bool RequestConnectFrom(FlowchartLayer layer, string from)
         {
             if (!(layer is StateMachineEditorLayer stateLayer)) return false;
             if (from == State.ExitState)
@@ -1056,7 +1056,7 @@ namespace Fractural.StateMachine
 
         }
 
-        protected override bool _RequestConnectTo(FlowChartLayer layer, string to)
+        protected override bool RequestConnectTo(FlowchartLayer layer, string to)
         {
             if (!(layer is StateMachineEditorLayer stateLayer)) return false;
             if (to == State.EntryState)
@@ -1065,7 +1065,7 @@ namespace Fractural.StateMachine
 
         }
 
-        protected override void OnDuplicated(FlowChartLayer layer, GDC.Array<Control> oldNodes, GDC.Array<Control> newNodes)
+        protected override void OnDuplicated(FlowchartLayer layer, GDC.Array<Control> oldNodes, GDC.Array<Control> newNodes)
         {
             if (!(layer is StateMachineEditorLayer stateLayer)) return;
             // Duplicate condition as well

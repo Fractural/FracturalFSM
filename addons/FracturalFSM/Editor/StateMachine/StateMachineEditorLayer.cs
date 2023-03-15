@@ -3,7 +3,7 @@ using System;
 using Godot;
 using GDC = Godot.Collections;
 using Fractural.Utils;
-using Fractural.FlowChart;
+using Fractural.Flowchart;
 
 namespace Fractural.StateMachine
 {
@@ -11,7 +11,7 @@ namespace Fractural.StateMachine
     /// Currently only provides debugging visualizatinon for state machine layers.
     /// </summary>
     [Tool]
-    public class StateMachineEditorLayer : FlowChartLayer
+    public class StateMachineEditorLayer : FlowchartLayer
     {
         private Color editorAccentColor = Colors.White;
         private Color editorComplementaryColor = Colors.White;

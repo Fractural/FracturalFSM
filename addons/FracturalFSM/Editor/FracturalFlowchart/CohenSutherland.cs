@@ -1,6 +1,6 @@
 ﻿using Godot;
 
-namespace Fractural.FlowChart
+namespace Fractural.Flowchart
 {
     public static class CohenSutherland
     {

@@ -5,12 +5,12 @@ using GDC = Godot.Collections;
 using Fractural.GodotCodeGenerator.Attributes;
 using System.Collections.Generic;
 using Fractural.Utils;
-using Fractural.FlowChart;
+using Fractural.Flowchart;
 
 namespace Fractural.StateMachine
 {
     [Tool]
-    public partial class TransitionLine : FlowChartLine
+    public partial class TransitionLine : FlowchartLine
     {
         [Export] private float uprightAngleRange = 10.0f;
 
@@ -201,7 +201,7 @@ namespace Fractural.StateMachine
         /// </summary>
         /// <param name="transition"></param>
         /// <returns></returns>
-        public static string GetTransitionLineName(Transition transition) => FlowChart.FlowChart.GetFlowChartLineName(transition.From, transition.To);
+        public static string GetTransitionLineName(Transition transition) => Flowchart.Flowchart.GetFlowchartLineName(transition.From, transition.To);
 
         #region Debug Display
         public void DebugUpdate(Tween tween, GDC.Dictionary parameters, GDC.Dictionary localParameters)

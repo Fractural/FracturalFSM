@@ -1,7 +1,7 @@
 [gd_scene load_steps=3 format=2]
 
 [ext_resource path="res://addons/FracturalFSM/Editor/Transition/TransitionLine.cs" type="Script" id=1]
-[ext_resource path="res://addons/FracturalFSM/Editor/FlowChart/FlowChartLine.tscn" type="PackedScene" id=2]
+[ext_resource path="res://addons/FracturalFSM/Editor/FracturalFlowchart/FlowchartLine.tscn" type="PackedScene" id=2]
 
 [node name="TransitionLine" instance=ExtResource( 2 )]
 script = ExtResource( 1 )

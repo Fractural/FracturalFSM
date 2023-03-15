@@ -2,12 +2,12 @@
 using System;
 using Godot;
 using Fractural.GodotCodeGenerator.Attributes;
-using Fractural.FlowChart;
+using Fractural.Flowchart;
 
 namespace Fractural.StateMachine
 {
     [Tool]
-    public partial class StateNode : FlowChartNode
+    public partial class StateNode : FlowchartNode
     {
         [Signal] public delegate void NewNameEntered(string newName); // Emits when focused exit || Enter pressed
 

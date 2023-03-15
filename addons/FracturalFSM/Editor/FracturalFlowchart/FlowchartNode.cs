@@ -2,12 +2,13 @@
 using System;
 using Godot;
 
-namespace Fractural.FlowChart
+namespace Fractural.Flowchart
 {
+    [CSharpScript]
     [Tool]
-    public class FlowChartNode : Container, ISelectable
+    public class FlowchartNode : Container, ISelectable
     {
-        // FlowChartNode has a custom style normal, focus
+        // FlowchartNode has a custom style normal, focus
 
         private bool selected = false;
         public bool Selected
@@ -23,18 +24,18 @@ namespace Fractural.FlowChart
             }
         }
 
-        public FlowChartNode()
+        public FlowchartNode()
         {
-            FocusMode = FocusModeEnum.None; // Let FlowChart has the focus to handle guiInput
+            FocusMode = FocusModeEnum.None; // Let Flowchart has the focus to handle guiInput
             MouseFilter = MouseFilterEnum.Pass;
         }
 
         public override void _Draw()
         {
             if (selected)
-                DrawStyleBox(GetStylebox("focus", "FlowChartNode"), new Rect2(Vector2.Zero, RectSize));
+                DrawStyleBox(GetStylebox("focus", "FlowchartNode"), new Rect2(Vector2.Zero, RectSize));
             else
-                DrawStyleBox(GetStylebox("normal", "FlowChartNode"), new Rect2(Vector2.Zero, RectSize));
+                DrawStyleBox(GetStylebox("normal", "FlowchartNode"), new Rect2(Vector2.Zero, RectSize));
         }
 
         public override void _Notification(int what)

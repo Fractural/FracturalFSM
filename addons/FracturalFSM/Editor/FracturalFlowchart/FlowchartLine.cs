@@ -5,10 +5,11 @@ using GDC = Godot.Collections;
 using Fractural.Utils;
 using System.Collections.Generic;
 
-namespace Fractural.FlowChart
+namespace Fractural.Flowchart
 {
+    [CSharpScript]
     [Tool]
-    public class FlowChartLine : Container, ISelectable
+    public class FlowchartLine : Container, ISelectable
     {
         // Flowchart Custom style normal, focus, arrow
 
@@ -26,7 +27,7 @@ namespace Fractural.FlowChart
             }
         }
 
-        public FlowChartLine()
+        public FlowchartLine()
         {
             FocusMode = FocusModeEnum.Click;
             MouseFilter = MouseFilterEnum.Ignore;
@@ -39,19 +40,18 @@ namespace Fractural.FlowChart
             from.y += RectSize.y / 2f;
             var to = RectSize;
             to.y -= RectSize.y / 2f;
-            var arrow = GetIcon("arrow", "FlowChartLine");
+            var arrow = GetIcon("arrow", "FlowchartLine");
             var tint = Colors.White;
             if (selected)
             {
-                tint = this.GetStylebox<StyleBoxFlat>("focus", "FlowChartLine").ShadowColor;
-                DrawStyleBox(GetStylebox("focus", "FlowChartLine"), new Rect2(Vector2.Zero, RectSize));
+                tint = this.GetStylebox<StyleBoxFlat>("focus", "FlowchartLine").ShadowColor;
+                DrawStyleBox(GetStylebox("focus", "FlowchartLine"), new Rect2(Vector2.Zero, RectSize));
             }
             else
             {
-                DrawStyleBox(GetStylebox("normal", "FlowChartLine"), new Rect2(Vector2.Zero, RectSize));
+                DrawStyleBox(GetStylebox("normal", "FlowchartLine"), new Rect2(Vector2.Zero, RectSize));
             }
             DrawTexture(arrow, Vector2.Zero - arrow.GetSize() / 2 + RectSize / 2, tint);
-
         }
 
         public override Vector2 _GetMinimumSize() => new Vector2(0, 5);

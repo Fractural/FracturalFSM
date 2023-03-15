@@ -1,4 +1,4 @@
-﻿namespace Fractural.FlowChart
+﻿namespace Fractural.Flowchart
 {
     public interface ISelectable
     {

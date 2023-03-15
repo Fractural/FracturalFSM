@@ -6,7 +6,7 @@ using Fractural.Utils;
 using Godot;
 using GDC = Godot.Collections;
 
-namespace Fractural.FlowChart
+namespace Fractural.Flowchart
 {
     /// <summary>
     /// Lightweight representation of a connection between two nodes, by
@@ -32,17 +32,17 @@ namespace Fractural.FlowChart
         /// <summary>
         /// Control node that draw line
         /// </summary>
-        public FlowChartLine Line { get; set; }
+        public FlowchartLine Line { get; set; }
 
-        public FlowChartNode FromNode { get; set; }
-        public FlowChartNode ToNode { get; set; }
+        public FlowchartNode FromNode { get; set; }
+        public FlowchartNode ToNode { get; set; }
         /// <summary>
         /// Line's y offset to make space for two interconnecting lines
         /// </summary>
         public float Offset { get; set; } = 0;
 
         public Connection() { }
-        public Connection(FlowChartLine line, FlowChartNode fromNode, FlowChartNode toNode)
+        public Connection(FlowchartLine line, FlowchartNode fromNode, FlowchartNode toNode)
         {
             Line = line;
             FromNode = fromNode;
@@ -73,13 +73,14 @@ namespace Fractural.FlowChart
         public Vector2 GetToPos() => ToNode != null ? ToNode.RectPosition + ToNode.RectSize / 2f : Line.RectPosition;
     }
 
+    [CSharpScript]
     [Tool]
-    public class FlowChartLayer : Control
+    public class FlowchartLayer : Control
     {
         public Control ContentLines { get; private set; } = new Control(); // Node that hold all flowchart lines
         public Control ContentNodes { get; private set; } = new Control(); // Node that hold all flowchart nodes
 
-        // [FlowChartNode.name] = [Connection.to] = Connection
+        // [FlowchartNode.name] = [Connection.to] = Connection
         public GDC.Dictionary Connections { get; private set; } = new GDC.Dictionary() { };
 
         #region Connections Accessors
@@ -105,9 +106,9 @@ namespace Fractural.FlowChart
         }
         #endregion
 
-        public FlowChartLayer()
+        public FlowchartLayer()
         {
-            Name = "FlowChartLayer";
+            Name = "FlowchartLayer";
             MouseFilter = MouseFilterEnum.Ignore;
 
             ContentLines.Name = "content_lines";
@@ -150,7 +151,7 @@ namespace Fractural.FlowChart
 
         public void AddNode(Node node)
         {
-            ContentNodes.AddChild(node);
+            node.Reparent(ContentNodes);
         }
 
         public void RemoveNode(Node node)
@@ -160,7 +161,7 @@ namespace Fractural.FlowChart
         }
 
         // TODO: Find a way to refactor out the call to AfterConnectNode
-        //       from FlowChart since this method seems like it should be private.
+        //       from Flowchart since this method seems like it should be private.
         /// <summary>
         /// Called after connection established
         /// </summary>
@@ -176,7 +177,7 @@ namespace Fractural.FlowChart
         /// </summary>
         /// <param name="connection"></param>
         /// <returns></returns>
-        private FlowChartLine AfterDisconnectNode(Connection connection)
+        private FlowchartLine AfterDisconnectNode(Connection connection)
         {
             ContentLines.RemoveChild(connection.Line);
             return connection.Line;
@@ -220,7 +221,7 @@ namespace Fractural.FlowChart
         /// <param name="from"></param>
         /// <param name="to"></param>
         /// <param name="interconnectionOffset"></param>
-        public void ConnectNode(FlowChartLine line, string from, string to, int interconnectionOffset = 0)
+        public void ConnectNode(FlowchartLine line, string from, string to, int interconnectionOffset = 0)
         {
             if (from == to)
                 return; // Connect to this
@@ -228,7 +229,7 @@ namespace Fractural.FlowChart
             if (connectionsFrom != null && connectionsFrom.Contains(to))
                 return; // Connection existed
 
-            var connection = new Connection(line, ContentNodes.GetNode<FlowChartNode>(from), ContentNodes.GetNode<FlowChartNode>(to));
+            var connection = new Connection(line, ContentNodes.GetNode<FlowchartNode>(from), ContentNodes.GetNode<FlowchartNode>(to));
 
             if (connectionsFrom == null)
             {
@@ -259,7 +260,7 @@ namespace Fractural.FlowChart
         /// <param name="from"></param>
         /// <param name="to"></param>
         /// <returns>Line that was the connection between the two nodes</returns>
-        public FlowChartLine DisconnectNode(string from, string to)
+        public FlowchartLine DisconnectNode(string from, string to)
         {
             var connectionsFrom = Connections.Get<GDC.Dictionary>(from);
             var connection = connectionsFrom.Get<Connection>(to);
