@@ -132,5 +132,25 @@ namespace Fractural.StateMachine
         /// Check if it is nested. ("Base" is not nested, "Base/NextState" is nested)
         /// </summary>
         public bool IsNested => dirs.Length > 2; // Root(empty string) & base taken 2 place
+
+        /// <summary>
+        /// Return parent path, "path/to/state" return "path/to"
+        /// </summary>
+        /// <param name="path"></param>
+        /// <returns></returns>
+        public static string GetBaseDirectoryFromPath(string path)
+        {
+            return path.Substr(0, path.FindLast("/"));
+        }
+
+        /// <summary>
+        /// Return end directory of path, "path/to/state" returns "state"
+        /// </summary>
+        /// <param name="path"></param>
+        /// <returns></returns>
+        public static string GetStateFromPath(string path)
+        {
+            return path.Right(path.FindLast("/") + 1);
+        }
     }
 }

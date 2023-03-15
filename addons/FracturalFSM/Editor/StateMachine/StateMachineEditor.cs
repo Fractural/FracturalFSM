@@ -200,11 +200,11 @@ namespace Fractural.StateMachine
             conditionVisibility.FocusMode = FocusModeEnum.None;
             conditionVisibility.Connect("pressed", this, nameof(OnConditionVisibilityPressed));
             conditionVisibility.Pressed = true;
-            gadget.AddChild(conditionVisibility);
+            toolbar.AddChild(conditionVisibility);
 
             unsavedIndicator.SizeFlagsVertical = (int)SizeFlags.ShrinkCenter;
             unsavedIndicator.FocusMode = FocusModeEnum.None;
-            gadget.AddChild(unsavedIndicator);
+            toolbar.AddChild(unsavedIndicator);
 
             messageBox.SetAnchorsAndMarginsPreset(LayoutPreset.BottomWide);
             messageBox.GrowVertical = GrowDirection.Begin;
@@ -237,6 +237,13 @@ namespace Fractural.StateMachine
             // However the layer would have been created with the old accent color, so we're going to inject
             // the new accent color we just got from the theme into it.
             CurrentLayer.Construct(editorAccentColor);
+        }
+
+        public override void _EnterTree()
+        {
+            base._EnterTree();
+            // Adjust ScrollMargin based on window size
+            ScrollMargin = (int)(Mathf.Max(OS.WindowSize.x, OS.WindowSize.y) / 2f);
         }
 
         public override void _ExitTree()
@@ -344,8 +351,8 @@ namespace Fractural.StateMachine
                 // '--------------------------------.-------'     '---.--'
                 //                              endStateParentPath  endStateName
                 //                      
-                var endStateBaseDirectory = previousPath.GetBaseDir();
-                var endStateName = previousPath.GetFileName();
+                var endStateBaseDirectory = StateDirectory.GetBaseDirectoryFromPath(previousPath);
+                var endStateName = StateDirectory.GetStateFromPath(previousPath);
                 var layer = content.GetNodeOrNull<StateMachineEditorLayer>(endStateBaseDirectory);
                 if (layer != null)
                 {
@@ -664,8 +671,8 @@ namespace Fractural.StateMachine
         /// <returns></returns>
         private StateMachineEditorLayer TryConvertToStateMachineAndAddLayer(string pathToState)
         {
-            var stateBaseDirectory = pathToState.GetBaseDir();
-            var stateName = pathToState.GetFileName();
+            var stateBaseDirectory = StateDirectory.GetBaseDirectoryFromPath(pathToState);
+            var stateName = StateDirectory.GetStateFromPath(pathToState);
 
             var stateBaseDirectoryLayer = GetLayer(stateBaseDirectory);
             if (stateBaseDirectoryLayer == null) return null;
@@ -706,8 +713,8 @@ namespace Fractural.StateMachine
         /// <returns></returns>
         private void ConvertToStateAndRemoveLayer(string pathToStateMachine)
         {
-            var stateBaseDirectory = pathToStateMachine.GetBaseDir();
-            var stateName = pathToStateMachine.GetFileName();
+            var stateBaseDirectory = StateDirectory.GetBaseDirectoryFromPath(pathToStateMachine);
+            var stateName = StateDirectory.GetStateFromPath(pathToStateMachine);
 
             // Layer that contains the state as a node
             var stateBaseDirectoryLayer = GetLayer(stateBaseDirectory);

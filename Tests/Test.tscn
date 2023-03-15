@@ -1,4 +1,4 @@
-[gd_scene load_steps=30 format=2]
+[gd_scene load_steps=31 format=2]
 
 [ext_resource path="res://addons/FracturalFSM/CustomTypes/StateMachine.cs" type="Script" id=1]
 [ext_resource path="res://addons/FracturalFSM/CustomTypes/StateMachinePlayer.cs" type="Script" id=2]
@@ -10,14 +10,14 @@
 [sub_resource type="Resource" id=2]
 script = ExtResource( 3 )
 __meta__ = {
-"graph_offset": Vector2( -12, 140 )
+"graph_offset": Vector2( -32, 160 )
 }
 Name = "Entry"
 
 [sub_resource type="Resource" id=8]
 script = ExtResource( 3 )
 __meta__ = {
-"graph_offset": Vector2( 308, 220 )
+"graph_offset": Vector2( 268, 140 )
 }
 Name = "Exit"
 
@@ -63,7 +63,7 @@ __meta__ = {
 }
 Name = "Exit"
 
-[sub_resource type="Resource" id=27]
+[sub_resource type="Resource" id=32]
 script = ExtResource( 3 )
 __meta__ = {
 "graph_offset": Vector2( 308, 160 )
@@ -104,7 +104,7 @@ States = {
 "Entry": SubResource( 25 ),
 "Exit": SubResource( 26 ),
 "State": SubResource( 24 ),
-"State2": SubResource( 27 )
+"State2": SubResource( 32 )
 }
 transitions = {
 "Entry": {
@@ -135,7 +135,7 @@ priority = 0
 [sub_resource type="Resource" id=23]
 script = ExtResource( 1 )
 __meta__ = {
-"graph_offset": Vector2( 185.5, 60 )
+"graph_offset": Vector2( 165.5, 60 )
 }
 Name = "sdfsdfsdfS dfdftate"
 States = {
@@ -151,6 +151,13 @@ transitions = {
 "Exit": SubResource( 22 )
 }
 }
+
+[sub_resource type="Resource" id=33]
+script = ExtResource( 3 )
+__meta__ = {
+"graph_offset": Vector2( 68, 40 )
+}
+Name = "State"
 
 [sub_resource type="Resource" id=13]
 script = ExtResource( 6 )
@@ -203,6 +210,7 @@ Name = ""
 States = {
 "Entry": SubResource( 2 ),
 "Exit": SubResource( 8 ),
+"State": SubResource( 33 ),
 "State2": SubResource( 17 ),
 "sdfsdfsdfS dfdftate": SubResource( 23 )
 }

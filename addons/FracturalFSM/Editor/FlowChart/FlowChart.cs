@@ -49,7 +49,7 @@ namespace Fractural.FlowChart
         /// <summary>
         /// Margin of content from edge of FlowChart
         /// </summary>
-        [Export] public int ScrollMargin { get; set; } = 100;
+        [Export] public int ScrollMargin { get; set; } = 300;
         /// <summary>
         /// Offset between two line that interconnecting
         /// </summary>
@@ -69,10 +69,12 @@ namespace Fractural.FlowChart
             get => zoom;
             set
             {
-                zoom = value;
+                zoom = Mathf.Clamp(value, ZoomRange.x, ZoomRange.y);
                 content.RectScale = Vector2.One * zoom;
             }
         }
+        [Export]
+        public Vector2 ZoomRange { get; set; } = new Vector2(0.25f, 3f);
         public bool IsSnapping { get; set; } = true;
         public bool CanGuiSelectNode { get; set; } = true;
         public bool CanGuiDeleteNode { get; set; } = true;
@@ -88,7 +90,7 @@ namespace Fractural.FlowChart
         protected HScrollBar hScroll = new HScrollBar();
         protected VScrollBar vScroll = new VScrollBar();
         protected VBoxContainer topBar = new VBoxContainer();
-        protected HBoxContainer gadget = new HBoxContainer(); // Root node of top overlay controls
+        protected HBoxContainer toolbar = new HBoxContainer(); // Root node of top overlay controls
         protected Button zoomMinus = new Button();
         protected Button zoomReset = new Button();
         protected Button zoomPlus = new Button();
@@ -221,26 +223,26 @@ namespace Fractural.FlowChart
             topBar.MouseFilter = MouseFilterEnum.Ignore;
             AddChild(topBar);
 
-            gadget.MouseFilter = MouseFilterEnum.Ignore;
-            topBar.AddChild(gadget);
+            toolbar.MouseFilter = MouseFilterEnum.Ignore;
+            topBar.AddChild(toolbar);
 
             zoomMinus.Flat = true;
             zoomMinus.HintTooltip = "Zoom Out";
             zoomMinus.Connect("pressed", this, nameof(OnZoomMinusPressed));
             zoomMinus.FocusMode = FocusModeEnum.None;
-            gadget.AddChild(zoomMinus);
+            toolbar.AddChild(zoomMinus);
 
             zoomReset.Flat = true;
             zoomReset.HintTooltip = "Zoom Reset";
             zoomReset.Connect("pressed", this, nameof(OnZoomResetPressed));
             zoomReset.FocusMode = FocusModeEnum.None;
-            gadget.AddChild(zoomReset);
+            toolbar.AddChild(zoomReset);
 
             zoomPlus.Flat = true;
             zoomPlus.HintTooltip = "Zoom In";
             zoomPlus.Connect("pressed", this, nameof(OnZoomPlusPressed));
             zoomPlus.FocusMode = FocusModeEnum.None;
-            gadget.AddChild(zoomPlus);
+            toolbar.AddChild(zoomPlus);
 
             snapButton.Flat = true;
             snapButton.ToggleMode = true;
@@ -248,13 +250,13 @@ namespace Fractural.FlowChart
             snapButton.Connect("pressed", this, nameof(OnSnapButtonPressed));
             snapButton.Pressed = true;
             snapButton.FocusMode = FocusModeEnum.None;
-            gadget.AddChild(snapButton);
+            toolbar.AddChild(snapButton);
 
             snapAmount.Value = Snap;
             snapAmount.Connect("value_changed", this, nameof(OnSnapAmountValueChanged));
-            gadget.AddChild(snapAmount);
+            toolbar.AddChild(snapAmount);
         }
-
+        // TODO: Figure out how graph edit work
         public override void _Draw()
         {
             // Update scrolls
@@ -262,7 +264,6 @@ namespace Fractural.FlowChart
             content.RectPivotOffset = GetScrollRect().Size / 2f;// Scale from center
             if (!GetRect().Encloses(contentRect))
             {
-
                 var hMin = contentRect.Position.x;
                 var hMax = contentRect.Size.x + contentRect.Position.x - RectSize.x;
                 var vMin = contentRect.Position.y;
@@ -284,17 +285,17 @@ namespace Fractural.FlowChart
                 vScroll.MaxValue = vMax;
                 vScroll.Page = contentRect.Size.y / 100;
 
-                // Draw selection box
             }
+            // Draw selection box
             if (!isDraggingNode && !isConnecting)
             {
 
                 var selectionBoxRect = GetSelectionBoxRect();
                 DrawStyleBox(SelectionStylebox, selectionBoxRect);
 
-                // Draw grid
-                // Refer GraphEdit(https://github.com/godotengine/godot/blob/6019dab0b45e1291e556e6d9e01b625b5076cc3c/scene/gui/graph_edit.cpp#L442)
             }
+            // Draw grid
+            // Refer GraphEdit(https://github.com/godotengine/godot/blob/6019dab0b45e1291e556e6d9e01b625b5076cc3c/scene/gui/graph_edit.cpp#L442)
             if (IsSnapping)
             {
                 var scrollOffset = new Vector2((float)hScroll.Value, (float)vScroll.Value);
@@ -979,7 +980,7 @@ namespace Fractural.FlowChart
         private Rect2 GetScrollRect(FlowChartLayer layer = null)
         {
             if (layer == null) layer = CurrentLayer;
-            return layer.GetScrollRect(ScrollMargin);
+            return layer.GetScrollRect((int)(ScrollMargin * zoom));
         }
 
 
