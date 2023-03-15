@@ -33,7 +33,7 @@ namespace Fractural.StateMachine
                     return true;
                 case nameof(Transition.Conditions):
                     var transitionEditor = transitionEditorPrefab.Instance<TransitionEditor>(); // Will be freed by editor
-                    transitionEditor.Construct(undoRedo, transition, transitionIcon);
+                    transitionEditor.PreReadyConstruct(undoRedo, transition, transitionIcon);
                     AddCustomControl(transitionEditor);
                     return true;
                 case nameof(Transition.priority):

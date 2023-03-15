@@ -29,8 +29,7 @@ namespace Fractural.StateMachine
                 {
                     if (transition != null)
                     {
-                        if (transition.IsConnected(nameof(Transition.ConditionAdded), this, nameof(OnTransitionConditionAdded)))
-                            transition.Disconnect(nameof(Transition.ConditionAdded), this, nameof(OnTransitionConditionAdded));
+                        transition.TryDisconnect(nameof(Transition.ConditionAdded), this, nameof(OnTransitionConditionAdded));
                     }
                     transition = value;
                     OnTransitionChanged(transition);
@@ -57,7 +56,7 @@ namespace Fractural.StateMachine
 
         public TransitionLine()
         {
-            Transition = new Transition();
+            Transition = CSharpScript<Transition>.New();
         }
 
         public override void _Draw()
@@ -192,12 +191,11 @@ namespace Fractural.StateMachine
         #endregion
 
         /// <summary>
-        /// Used for looking up the transition line using GetNode
+        /// Used for looking up the transition line of a given transition using GetNode
         /// </summary>
-        /// <param name="transitionLine"></param>
+        /// <param name="transition"></param>
         /// <returns></returns>
-        public static string GetUniqueNodeName(TransitionLine transitionLine) => GetUniqueNodeName(transitionLine.transition);
-        public static string GetUniqueNodeName(Transition transition) => $"{transition.From}>{transition.To}";
+        public static string GetTransitionLineName(Transition transition) => FlowChart.FlowChart.GetFlowChartLineName(transition.From, transition.To);
 
         #region Debug Display
         public void DebugUpdate(Tween tween, GDC.Dictionary parameters, GDC.Dictionary localParameters)

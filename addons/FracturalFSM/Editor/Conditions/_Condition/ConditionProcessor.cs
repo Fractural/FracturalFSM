@@ -2,6 +2,7 @@
 
 namespace Fractural.StateMachine
 {
+    [Tool]
     /// <summary>
     /// Has creation methods for the condition editor and conditions. Is used as part of 
     /// a strategy pattern within TransitionEditor to create conditions + editors on the fly.
@@ -19,10 +20,11 @@ namespace Fractural.StateMachine
         public abstract string ConditionName { get; }
     }
 
+    [Tool]
     public abstract class ConditionProcessor<T> : ConditionProcessor
         where T : Condition, new()
     {
         public override bool CanHandle(Condition condition) => condition is T;
-        public override Condition CreateConditionInstance() => new T();
+        public override Condition CreateConditionInstance() => CSharpScript<T>.New();
     }
 }

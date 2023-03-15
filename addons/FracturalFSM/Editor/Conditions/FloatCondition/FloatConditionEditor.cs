@@ -13,8 +13,8 @@ namespace Fractural.StateMachine
 
         private float _oldValue = 0f;
 
-
-        public override void RealReady()
+        [OnReady]
+        public new void RealReady()
         {
             floatValue.Connect("text_entered", this, nameof(OnFloatValueTextEntered));
             floatValue.Connect("focus_entered", this, nameof(OnFloatValueFocusEntered));
@@ -33,16 +33,18 @@ namespace Fractural.StateMachine
             floatValue.Text = Mathf.Stepify(newValue, 0.01f).ToString().PadDecimals(2);
         }
 
-        protected override void OnConditionChanged(Condition newCondition)
+        protected override void InitializeCondition()
         {
-            base.OnConditionChanged(newCondition);
-            if (newCondition != null)
-                floatValue.Text = TypedValueCondition.TypedValue.ToString(2);
+            base.InitializeCondition();
+            floatValue.Text = TypedValueCondition.TypedValue.ToString(2);
         }
 
         private void OnFloatValueTextEntered(string newText)
         {
-            ChangeValueAction(_oldValue, float.Parse(newText));
+            if (float.TryParse(newText, out float result))
+                ChangeValueAction(_oldValue, result);
+            else
+                floatValue.Text = _oldValue.ToString();
             floatValue.ReleaseFocus();
         }
 
@@ -55,7 +57,7 @@ namespace Fractural.StateMachine
         private void OnFloatValueFocusExited()
         {
             SetProcessInput(false);
-            ChangeValueAction(_oldValue, float.Parse(floatValue.Text));
+            OnFloatValueTextEntered(floatValue.Text);
         }
     }
 }

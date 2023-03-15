@@ -10,8 +10,9 @@ using Fractural.FlowChart;
 
 namespace Fractural.StateMachine
 {
+    [CSharpScript]
     [Tool]
-    public class StateMachine : State, ISerializationListener
+    public class StateMachine : State
     {
         [Signal] delegate void TransitionAdded(Transition transition);// Transition added
         [Signal] delegate void TransitionRemoved(Transition transition);// Transition removed
@@ -313,9 +314,8 @@ namespace Fractural.StateMachine
         /// </summary>
         /// <param name="stateMachine"></param>
         /// <returns></returns>
-        public bool Validate(StateMachine stateMachine)
+        public static bool Validate(StateMachine stateMachine)
         {
-            GD.Print($"VALIDATE: {stateMachine} {stateMachine.transitions} is transitions null {stateMachine.transitions == null}");
             bool validated = false;
             foreach (var fromKey in stateMachine.transitions.Keys)
             {
@@ -362,21 +362,6 @@ namespace Fractural.StateMachine
                 }
             }
             return validated;
-        }
-
-        public void OnBeforeSerialize()
-        {
-            GD.Print("Before serialize");
-            GD.Print($"\t{JSON.Print(States)}");
-            GD.Print($"\t{JSON.Print(transitions)}");
-        }
-
-        public void OnAfterDeserialize()
-        {
-            GD.Print("After serialize");
-            GD.Print($"\t{JSON.Print(States)}");
-            GD.Print($"\t{JSON.Print(transitions)}");
-
         }
     }
 }

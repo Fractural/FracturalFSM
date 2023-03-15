@@ -52,7 +52,7 @@ namespace Fractural.StateMachine
             // Debug update all transitions for the current state.
             foreach (Transition transition in transitions.Values)
             {
-                var line = ContentLines.GetNodeOrNull<TransitionLine>(TransitionLine.GetUniqueNodeName(transition));
+                var line = ContentLines.GetNodeOrNull<TransitionLine>(TransitionLine.GetTransitionLineName(transition));
                 line.DebugUpdate(tween, parameters, localParameters);
             }
             tween.Start();
@@ -83,7 +83,7 @@ namespace Fractural.StateMachine
             foreach (Transition transition in transitions.Values)
             {
                 // Transition out all the transition lines for the current state's transitions
-                var line = ContentLines.GetNodeOrNull<TransitionLine>(TransitionLine.GetUniqueNodeName(transition));
+                var line = ContentLines.GetNodeOrNull<TransitionLine>(TransitionLine.GetTransitionLineName(transition));
                 bool isTransitionToEndState = transition.To == toDir.End;
                 line.DebugTransitOut(tween, isTransitionToEndState, editorComplementaryColor);
             }
@@ -93,7 +93,7 @@ namespace Fractural.StateMachine
                 transitions = StateMachine.GetNodeTransitionsDictOrNew(fromDir.Base);
                 foreach (Transition transition in transitions.Values)
                 {
-                    var line = ContentLines.GetNodeOrNull(TransitionLine.GetUniqueNodeName(transition));
+                    var line = ContentLines.GetNodeOrNull(TransitionLine.GetTransitionLineName(transition));
                     if (line != null)
                         tween.InterpolateProperty(line, "self_modulate", null, editorComplementaryColor.Lightened(0.5f), 0.5f);
                 }
@@ -103,7 +103,7 @@ namespace Fractural.StateMachine
 
                 foreach (Transition transition in transitions.Values)
                 {
-                    var line = ContentLines.GetNodeOrNull(TransitionLine.GetUniqueNodeName(transition));
+                    var line = ContentLines.GetNodeOrNull(TransitionLine.GetTransitionLineName(transition));
                     if (line != null)
                         tween.InterpolateProperty(line, "self_modulate", null, Colors.White, 0.5f);
                 }

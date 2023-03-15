@@ -72,6 +72,7 @@ namespace Fractural.StateMachine
 
         protected override void Unload()
         {
+            editorSelection.Disconnect("selection_changed", this, nameof(OnEditorSelectionSelectionChanged));
             HideStateMachineEditor();
             stateMachineEditor.QueueFree();
         }

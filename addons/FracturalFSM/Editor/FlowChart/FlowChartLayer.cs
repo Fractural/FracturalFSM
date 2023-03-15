@@ -27,7 +27,7 @@ namespace Fractural.FlowChart
     /// <summary>
     /// Holds data about a connection between two nodes, as well as the line that visualizes it.
     /// </summary>
-    public class Connection
+    public class Connection : Reference
     {
         /// <summary>
         /// Control node that draw line
@@ -41,6 +41,7 @@ namespace Fractural.FlowChart
         /// </summary>
         public float Offset { get; set; } = 0;
 
+        public Connection() { }
         public Connection(FlowChartLine line, FlowChartNode fromNode, FlowChartNode toNode)
         {
             Line = line;
@@ -248,7 +249,6 @@ namespace Fractural.FlowChart
                     invConnection.Offset = interconnectionOffset;
                     connection.Join();
                     invConnection.Join();
-
                 }
             }
         }

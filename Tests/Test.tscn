@@ -1,14 +1,95 @@
-[gd_scene load_steps=4 format=2]
+[gd_scene load_steps=17 format=2]
 
+[ext_resource path="res://addons/FracturalFSM/CustomTypes/StateMachine.cs" type="Script" id=1]
 [ext_resource path="res://addons/FracturalFSM/CustomTypes/StateMachinePlayer.cs" type="Script" id=2]
-
-[sub_resource type="CSharpScript" id=1]
+[ext_resource path="res://addons/FracturalFSM/Editor/State/State.cs" type="Script" id=3]
+[ext_resource path="res://addons/FracturalFSM/Editor/Transition/Transition.cs" type="Script" id=4]
+[ext_resource path="res://addons/FracturalFSM/Editor/Conditions/BoolCondition/BoolCondition.cs" type="Script" id=5]
+[ext_resource path="res://addons/FracturalFSM/Editor/Conditions/IntegerCondition/IntegerCondition.cs" type="Script" id=6]
 
 [sub_resource type="Resource" id=2]
-script = SubResource( 1 )
+script = ExtResource( 3 )
+__meta__ = {
+"graph_offset": Vector2( 28, 60 )
+}
+Name = "Entry"
+
+[sub_resource type="Resource" id=4]
+script = ExtResource( 3 )
+__meta__ = {
+"graph_offset": Vector2( 208, 60 )
+}
+Name = "State2"
+
+[sub_resource type="Resource" id=7]
+script = ExtResource( 3 )
+__meta__ = {
+"graph_offset": Vector2( 208, 160 )
+}
+Name = "State"
+
+[sub_resource type="Resource" id=8]
+script = ExtResource( 3 )
+__meta__ = {
+"graph_offset": Vector2( 328, 180 )
+}
+Name = "Exit"
+
+[sub_resource type="Resource" id=12]
+script = ExtResource( 5 )
+Name = "Param"
+Comparation = 0
+value = false
+
+[sub_resource type="Resource" id=13]
+script = ExtResource( 6 )
+Name = "Param1"
+Comparation = 0
+value = 0
+
+[sub_resource type="Resource" id=14]
+script = ExtResource( 6 )
+Name = "Param2"
+Comparation = 0
+value = 0
+
+[sub_resource type="Resource" id=5]
+script = ExtResource( 4 )
+From = "Entry"
+To = "State2"
+Conditions = {
+"Param": SubResource( 12 ),
+"Param1": SubResource( 13 ),
+"Param2": SubResource( 14 )
+}
+priority = 0
+
+[sub_resource type="Resource" id=15]
+script = ExtResource( 4 )
+From = "Entry"
+To = "State"
+Conditions = {
+}
+priority = 0
+
+[sub_resource type="Resource" id=3]
+script = ExtResource( 1 )
+Name = ""
+States = {
+"Entry": SubResource( 2 ),
+"Exit": SubResource( 8 ),
+"State": SubResource( 7 ),
+"State2": SubResource( 4 )
+}
+transitions = {
+"Entry": {
+"State": SubResource( 15 ),
+"State2": SubResource( 5 )
+}
+}
 
 [node name="Test" type="Node2D"]
 
 [node name="StateMachinePlayer" type="Node" parent="."]
 script = ExtResource( 2 )
-StateMachineResource = SubResource( 2 )
+StateMachineResource = SubResource( 3 )

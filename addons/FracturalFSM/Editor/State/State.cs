@@ -1,16 +1,15 @@
 
 using System;
 using Godot;
-using Dictionary = Godot.Collections.Dictionary;
-using Array = Godot.Collections.Array;
+using GDC = Godot.Collections;
 using Fractural.Utils;
 
 namespace Fractural.StateMachine
 {
+    [CSharpScript]
     [Tool]
     public class State : Resource
     {
-
         [Signal] public delegate void NameChanged(string newName);
 
         // Reserved state name for Entry/Exit

@@ -1,13 +1,13 @@
-
-using System;
-using Godot;
 using Fractural.GodotCodeGenerator.Attributes;
+using Godot;
+using System.Diagnostics;
 
 namespace Fractural.StateMachine
 {
     [Tool]
     public partial class ConditionEditor : HBoxContainer
     {
+        [Signal] public delegate void NewNameEntered(string newName);
         [Signal] public delegate void Removed();
 
         [OnReadyGet("Name")]
@@ -18,26 +18,19 @@ namespace Fractural.StateMachine
         protected UndoRedo undoRedo;
 
         private Condition condition;
-        public Condition Condition
-        {
-            get => condition;
-            set
-            {
-                if (Condition != value)
-                {
-                    Condition = value;
-                    OnConditionChanged(value);
-                }
-            }
-        }
+        public Condition Condition => condition;
 
-        public void Construct(UndoRedo undoRedo)
+        public ConditionEditor() { }
+        public void Construct(UndoRedo undoRedo, Condition condition)
         {
             this.undoRedo = undoRedo;
+            this.condition = condition;
+            Debug.Assert(condition != null, "Expected condition to not be null");
+            InitializeCondition();
         }
 
         [OnReady]
-        public virtual void RealReady()
+        public void RealReady()
         {
             nameEdit.Connect("text_entered", this, nameof(OnNameEditTextEntered));
             nameEdit.Connect("focus_entered", this, nameof(OnNameEditFocusEntered));
@@ -54,6 +47,14 @@ namespace Fractural.StateMachine
 
         public virtual bool CanHandle(Condition condition) => true;
 
+        /// <summary>
+        /// Reverts the editor to display the old condition name
+        /// </summary>
+        public void RevertConditionName()
+        {
+            nameEdit.Text = condition.Name;
+        }
+
         #region UI Wiring
 
         private void OnEditorRemoved()
@@ -65,9 +66,7 @@ namespace Fractural.StateMachine
         {
             nameEdit.ReleaseFocus();
             if (Condition.Name == newText) // Avoid infinite loop
-            {
                 return;
-            }
             RenameEditAction(newText);
         }
 
@@ -80,9 +79,7 @@ namespace Fractural.StateMachine
         {
             SetProcessInput(false);
             if (Condition.Name == nameEdit.Text)
-            {
                 return;
-            }
             RenameEditAction(nameEdit.Text);
         }
 
@@ -95,37 +92,41 @@ namespace Fractural.StateMachine
 
         #region Private Methods
 
-        private void RenameEditAction(string newNameEdit)
+        private void RenameEditAction(string newName)
         {
-            var oldNameEdit = Condition.Name;
+            var oldName = Condition.Name;
             undoRedo.CreateAction("Rename Edit Condition");
-            undoRedo.AddDoMethod(this, nameof(UndoRedoRenameEdit), oldNameEdit, newNameEdit);
-            undoRedo.AddUndoMethod(this, nameof(UndoRedoRenameEdit), newNameEdit, oldNameEdit);
+            undoRedo.AddDoMethod(this, nameof(UndoRedoRenameEdit), newName);
+            undoRedo.AddUndoMethod(this, nameof(UndoRedoRenameEdit), oldName);
             undoRedo.CommitAction();
         }
 
-        private void UndoRedoRenameEdit(string fromText, string toText)
+        private void UndoRedoRenameEdit(string newName)
         {
-            var transition = GetParent().GetParent().GetParent<TransitionEditor>().Transition;// TODO: Better way to get Transition object
-            if (transition.ChangeConditionName(fromText, toText))
-            {
-                if (nameEdit.Text != toText) // Manually update nameEdit.text, in case called from undoRedo
-                    nameEdit.Text = toText;
-            }
-            else
-            {
-                nameEdit.Text = fromText;
-                GD.PushWarning($"Change Condition nameEdit From ({fromText}) To ({toText}) failed, nameEdit existed");
-            }
+            EmitSignal(nameof(NewNameEntered), newName);
         }
 
-        protected virtual void OnConditionChanged(Condition newCondition)
+        /// <summary>
+        /// Only called when the Condition's name is changed
+        /// </summary>
+        /// <param name="oldName"></param>
+        /// <param name="newName"></param>
+        private void OnConditionNameChanged(string oldName, string newName)
         {
-            if (newCondition != null)
-            {
-                nameEdit.Text = newCondition.Name;
-                nameEdit.HintTooltip = nameEdit.Text;
-            }
+            nameEdit.Text = newName;
+        }
+
+        /// <summary>
+        /// Called when the condition is first set. Is overriden by 
+        /// implementations of ConditionEditor to handle intiializing the edtior
+        /// with newCondition's data.
+        /// </summary>
+        /// <param name="newCondition"></param>
+        protected virtual void InitializeCondition()
+        {
+            Condition.Connect(nameof(Condition.NameChanged), this, nameof(OnConditionNameChanged));
+            nameEdit.Text = Condition.Name;
+            nameEdit.HintTooltip = nameEdit.Text;
         }
         #endregion
     }

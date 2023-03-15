@@ -113,6 +113,18 @@ public class PathViewer : HBoxContainer
         return path;
     }
 
+    public void RenameDirectory(string oldName, string newName)
+    {
+        foreach (Button child in GetChildren())
+        {
+            if (child.Text == oldName)
+            {
+                child.Text = newName;
+                break;
+            }
+        }
+    }
+
     private void OnButtonPressed(Button button)
     {
         var index = button.GetIndex();

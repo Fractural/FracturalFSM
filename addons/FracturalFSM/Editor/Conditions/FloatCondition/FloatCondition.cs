@@ -6,6 +6,7 @@ using Array = Godot.Collections.Array;
 
 namespace Fractural.StateMachine
 {
+    [CSharpScript]
     [Tool]
     public class FloatCondition : ValueCondition<float>
     {

@@ -1,8 +1,9 @@
-<Project Sdk="Godot.NET.Sdk/3.3.0">
-  <PropertyGroup>
-    <TargetFramework>net472</TargetFramework>
-  </PropertyGroup>
-  <ItemGroup>
-    <PackageReference Include="FracturalGodotCodeGenerator" Version="1.0.0" />
-  </ItemGroup>
+﻿<Project Sdk="Godot.NET.Sdk/3.3.0">
+	<PropertyGroup>
+		<TargetFramework>net472</TargetFramework>
+		<LangVersion>8.0</LangVersion>
+	</PropertyGroup>
+	<ItemGroup>
+		<PackageReference Include="FracturalGodotCodeGenerator" Version="1.0.0" />
+	</ItemGroup>
 </Project>

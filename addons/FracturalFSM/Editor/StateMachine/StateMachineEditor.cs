@@ -180,7 +180,13 @@ namespace Fractural.StateMachine
             => base.GetLayer(nodePath) as StateMachineEditorLayer;
         #endregion
 
-        public StateMachineEditor()
+        public void Construct(UndoRedo undoRedo)
+        {
+            this.undoRedo = undoRedo;
+        }
+
+        [OnReady]
+        public void RealReady()
         {
             pathViewer = new PathViewer();
             pathViewer.MouseFilter = MouseFilterEnum.Ignore;
@@ -207,16 +213,7 @@ namespace Fractural.StateMachine
             content.GetChild(0).Name = "root";
 
             SetProcess(false);
-        }
 
-        public void Construct(UndoRedo undoRedo)
-        {
-            this.undoRedo = undoRedo;
-        }
-
-        [OnReady]
-        public void RealReady()
-        {
             createNewStateMachineContainer.Visible = false;
             createNewStateMachine.Connect("pressed", this, nameof(OnCreateNewStateMachinePressed));
             contextMenu.Connect("index_pressed", this, nameof(OnContextMenuIndexPressed));
@@ -240,6 +237,13 @@ namespace Fractural.StateMachine
             // However the layer would have been created with the old accent color, so we're going to inject
             // the new accent color we just got from the theme into it.
             CurrentLayer.Construct(editorAccentColor);
+        }
+
+        public override void _ExitTree()
+        {
+            // Clear selection when the state editor is hidden
+            base._ExitTree();
+            ClearSelection();
         }
 
         public override void _Process(float delta)
@@ -427,7 +431,7 @@ namespace Fractural.StateMachine
 
         private void OnCreateNewStateMachinePressed()
         {
-            var newStateMachine = new StateMachine();
+            var newStateMachine = CSharpScript<StateMachine>.New();
             stateMachinePlayer.StateMachine = newStateMachine;
             StateMachine = newStateMachine;
             createNewStateMachineContainer.Visible = false;
@@ -506,7 +510,7 @@ namespace Fractural.StateMachine
                 var validated = StateMachine.Validate(newStateMachine);
                 if (validated)
                 {
-                    GD.Print("Corrupted gd-YAFSM StateMachine Resource fixed, save to apply the fix.");
+                    GD.Print("Corrupted FracturalFSM StateMachine Resource fixed, save to apply the fix.");
                 }
                 DrawGraph(rootLayer);
                 CheckHasEntry();
@@ -636,12 +640,9 @@ namespace Fractural.StateMachine
                         {
                             if (mouseButtonEvent.Doubleclick)
                             {
-                                if (node.NameEdit.GetRect().HasPoint(mouseButtonEvent.Position) && CanGuiNameEdit)
-                                {
-                                    // Edit State name if within LineEdit
-                                    node.EnableNameEdit(true);
+                                // Edit State name if within LineEdit
+                                if (CanGuiNameEdit && node.TryEnableNameEdit(mouseButtonEvent.Position))
                                     AcceptEvent();
-                                }
                                 else
                                 {
                                     var layer = CreateLayer(node);
@@ -675,7 +676,7 @@ namespace Fractural.StateMachine
                 newStateMachine = stateMachine;
             else
             {
-                newStateMachine = new StateMachine();
+                newStateMachine = CSharpScript<StateMachine>.New();
 
                 newStateMachine.Name = stateNnode.State.Name;
                 newStateMachine.GraphOffset = stateNnode.State.GraphOffset;
@@ -692,7 +693,7 @@ namespace Fractural.StateMachine
             State newState;
             if (statNnode.State is StateMachine)
             {
-                newState = new State();
+                newState = CSharpScript<State>.New();
                 newState.Name = statNnode.State.Name;
                 newState.GraphOffset = statNnode.State.GraphOffset;
                 layer.StateMachine.RemoveState(statNnode.State.Name);
@@ -774,7 +775,7 @@ namespace Fractural.StateMachine
             foreach (string stateKey in stateLayer.StateMachine.States.Keys)
             {
                 var state = stateLayer.StateMachine.States.Get<State>(stateKey);
-                var newNode = stateNodePrefab.Instance<StateNode>();
+                var newNode = StateNodePrefab.Instance<StateNode>();
                 newNode.Theme.GetStylebox<StyleBoxFlat>("focus", "FlowChartNode").BorderColor = editorAccentColor;
                 newNode.Name = stateKey; // Set before addNode to let engine handle duplicate name
                 AddNode(stateLayer, newNode);
@@ -850,22 +851,17 @@ namespace Fractural.StateMachine
         /// </summary>
         public void CheckHasEntry()
         {
-            GD.Print("Check has entry pre null check");
             if (CurrentLayer.StateMachine == null)
                 return;
 
-            GD.Print("Check has entry");
-
             if (CurrentLayer.StateMachine.HasEntry)
             {
-                GD.Print("\tHAS entry");
                 // Has entry so remove any entry missing messages
                 if (HasMessage(EntryStateMissingMsg))
                     RemoveMessage(EntryStateMissingMsg);
             }
             else
             {
-                GD.Print("Doesn't have entry " + JSON.Print(CurrentLayer.StateMachine.States));
                 // Doesn't have entry, so add entry state missing message
                 if (!HasMessage(EntryStateMissingMsg))
                     AddMessage(EntryStateMissingMsg);
@@ -925,12 +921,10 @@ namespace Fractural.StateMachine
             stateNode.Construct(undoRedo);
             stateNode.State.Name = stateNode.Name;
             stateNode.State.GraphOffset = stateNode.RectPosition;
-            stateNode.Connect(nameof(StateNode.NameEditEntered), this, nameof(OnNodeNameEditEntered), GDUtils.GDParams(stateNode));
+            stateNode.Connect(nameof(StateNode.NewNameEntered), this, nameof(OnNodeNewNameEntered), GDUtils.GDParams(stateNode));
             stateNode.Connect("gui_input", this, nameof(OnStateNodeGuiInput), GDUtils.GDParams(stateNode));
 
-            GD.Print("Node added " + JSON.Print(stateNode.State));
             stateLayer.StateMachine.AddState(stateNode.State);
-            GD.Print("state layer " + JSON.Print(stateLayer.StateMachine.States));
             CheckHasEntry();
             CheckHasExit();
             OnEdited();
@@ -938,19 +932,19 @@ namespace Fractural.StateMachine
 
         protected override void OnNodeRemoved(FlowChartLayer layer, Control node)
         {
-            var path = GD.Str(pathViewer.GetCwd(), "/", node.Name);
+            if (!(node is StateNode stateNode) || !(layer is StateMachineEditorLayer stateLayer)) return;
+
+            var path = GD.Str(pathViewer.GetCwd(), "/", stateNode.Name); // stateNode.Name == stateNode.State.Name
             var layerToRemove = GetLayer(path);
             if (layerToRemove != null)
             {
                 layerToRemove.GetParent().RemoveChild(layerToRemove);
                 layerToRemove.QueueFree();
             }
-            //var result = layer.StateMachine.RemoveState(nodeName);
+            stateLayer.StateMachine.RemoveState(stateNode.Name);
             CheckHasEntry();
             CheckHasExit();
             OnEdited();
-            //return result;
-
         }
 
         protected override void OnNodeConnected(FlowChartLayer layer, string from, string to)
@@ -971,7 +965,7 @@ namespace Fractural.StateMachine
                 return; // Transition already exists as it is loaded from file
 
             var line = stateLayer.GetConnection(from, to).Line as TransitionLine;
-            var newTransition = new Transition(from, to);
+            var newTransition = CSharpScript<Transition>.New(from, to, null); // NOTE: Constructor matching is stingy :( You can't use constructors with optional paramters
             line.Transition = newTransition;
             stateLayer.StateMachine.AddTransition(newTransition);
             ClearSelection();
@@ -1064,49 +1058,42 @@ namespace Fractural.StateMachine
         }
         #endregion
 
-        public void OnNodeNameEditEntered(string newName, StateNode node)
+        public void OnNodeNewNameEntered(string newName, StateNode node)
         {
-            var old = node.State.Name;
-
-            // TODO: Refactor this to not edit name edit directly from the state node (seems like an intrusion of responsibility)
-            if (old == newName)
+            var oldName = node.State.Name;
+            if (oldName == newName)
                 return;
+
             if (newName.Contains("/") || newName.Contains("\\")) // No back/forward-slash
             {
                 GD.PushWarning($"Illegal State Name: / && \\ are !allowed in State Name({newName})");
-                node.NameEdit.Text = old;
+                node.RevertStateName();
                 return;
             }
 
-            if (CurrentLayer.StateMachine.ChangeStateName(old, newName))
+            if (!CurrentLayer.StateMachine.ChangeStateName(oldName, newName))
             {
-                RenameNode(CurrentLayer, node.Name, newName);
-                node.Name = newName;
-                // Rename layer as well
-                var path = GD.Str(pathViewer.GetCwd(), "/", node.Name);
-                var layer = GetLayer(path);
-                if (layer == null)
-                    layer.Name = newName;
-
-                // TODO: Don't pull children directly from path viewer, that's path viewer's responsibility
-                foreach (Label child in pathViewer.GetChildren())
-                {
-                    if (child.Text == old)
-                    {
-                        child.Text = newName;
-                        break;
-                    }
-                }
-                OnEdited();
+                GD.PushWarning($"State Name: {newName} already exists!");
+                node.RevertStateName();
+                return;
             }
-            else
-                node.NameEdit.Text = old;
+
+            RenameNode(CurrentLayer, node.Name, newName);
+            node.State.Name = newName;
+            node.Name = newName;
+            // Rename layer as well
+            var path = GD.Str(pathViewer.GetCwd(), "/", node.Name);
+            var layer = GetLayer(path);
+            if (layer != null)
+                layer.Name = newName;
+
+            pathViewer.RenameDirectory(oldName, newName);
+            OnEdited();
         }
 
         public void OnEdited()
         {
             unsavedIndicator.Text = "*";
-
         }
 
         public void OnRemoteTransited(string from, string to)

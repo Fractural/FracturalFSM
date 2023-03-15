@@ -7,11 +7,24 @@ namespace Fractural.StateMachine
     [Tool]
     public class Condition : Resource
     {
+        /// <summary>
+        /// Emitted when the name is set
+        /// </summary>
+        /// <param name="oldName"></param>
+        /// <param name="newName"></param>
         [Signal] public delegate void NameChanged(string oldName, string newName);
-        [Signal] public delegate void DisplayStringChanged(string newString);   // TODO: Delete if unecesary
+        /// <summary>
+        /// Emitted when any fields that need displaying is changed.
+        /// For conditions this is the Name.
+        /// For value conditions this include the value and the comparation symbol.
+        /// </summary>
+        /// <param name="newString"></param>
+        [Signal] public delegate void DisplayStringChanged(string newString);
 
-        // Name of condition, unique to Transition
         private string name;
+        /// <summary>
+        /// Name of condition, unique to Transition. 
+        /// </summary>
         [Export]
         public string Name
         {
@@ -28,6 +41,7 @@ namespace Fractural.StateMachine
             }
         }
 
+        public Condition() { }
         public Condition(string name = "")
         {
             this.name = name;

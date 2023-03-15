@@ -19,7 +19,7 @@ namespace Fractural.StateMachine
     public abstract class ValueCondition : Condition
     {
         [Signal] public delegate void ComparationChanged(ComparationType newComparation); // Comparation hanged
-        [Signal] public delegate void ValueChanged(object newValue); // Value changed
+        [Signal] public delegate void ValueChanged(Godot.Object newValue); // Value changed
 
         // Enum to define how to compare value
         public enum ComparationType

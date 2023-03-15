@@ -8,11 +8,7 @@ namespace Fractural.StateMachine
     [Tool]
     public abstract partial class ValueConditionEditor<T> : ValueConditionEditor
     {
-        public ValueCondition<T> TypedValueCondition
-        {
-            get => ValueCondition as ValueCondition<T>;
-            set => ValueCondition = value;
-        }
+        public ValueCondition<T> TypedValueCondition => ValueCondition as ValueCondition<T>;
 
         public override bool CanHandle(Condition condition) => condition is ValueCondition<T>;
 
@@ -28,11 +24,11 @@ namespace Fractural.StateMachine
         [OnReadyGet("Comparation/PopupMenu")]
         private PopupMenu comparationPopupMenu;
 
-        public ValueCondition ValueCondition { get => Condition as ValueCondition; set => Condition = value; }
+        public ValueCondition ValueCondition => Condition as ValueCondition;
 
-        public override void RealReady()
+        [OnReady]
+        public new void RealReady()
         {
-            base.RealReady();
             comparationButton.Connect("pressed", this, nameof(OnComparationButtonPressed));
             comparationPopupMenu.Connect("id_pressed", this, nameof(OnComparationPopupMenuIdPressed));
         }
@@ -47,11 +43,10 @@ namespace Fractural.StateMachine
             ChangeComparationAction(id);
         }
 
-        protected override void OnConditionChanged(Condition newCondition)
+        protected override void InitializeCondition()
         {
-            base.OnConditionChanged(newCondition);
-            if (newCondition != null)
-                comparationButton.Text = comparationPopupMenu.GetItemText((int)ValueCondition.Comparation);
+            base.InitializeCondition();
+            comparationButton.Text = comparationPopupMenu.GetItemText((int)ValueCondition.Comparation);
         }
 
         private void ChangeComparationAction(int id)

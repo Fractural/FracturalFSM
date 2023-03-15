@@ -13,7 +13,8 @@ namespace Fractural.StateMachine
 
         private string _oldValue = "";
 
-        public override void RealReady()
+        [OnReady]
+        public new void RealReady()
         {
             stringValue.Connect("text_entered", this, nameof(OnStringValueTextEntered));
             stringValue.Connect("focus_entered", this, nameof(OnStringValueFocusEntered));
@@ -32,11 +33,10 @@ namespace Fractural.StateMachine
             stringValue.Text = newValue;
         }
 
-        protected override void OnConditionChanged(Condition newCondition)
+        protected override void InitializeCondition()
         {
-            base.OnConditionChanged(newCondition);
-            if (newCondition != null)
-                stringValue.Text = TypedValueCondition.TypedValue;
+            base.InitializeCondition();
+            stringValue.Text = TypedValueCondition.TypedValue;
         }
 
         private void OnStringValueTextEntered(string newText)
@@ -55,7 +55,6 @@ namespace Fractural.StateMachine
         {
             SetProcessInput(false);
             ChangeValueAction(_oldValue, stringValue.Text);
-
         }
     }
 }

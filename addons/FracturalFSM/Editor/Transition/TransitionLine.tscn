@@ -1,7 +1,8 @@
-[gd_scene load_steps=3 format=2]
+[gd_scene load_steps=4 format=2]
 
 [ext_resource path="res://addons/FracturalFSM/Editor/Transition/TransitionLine.cs" type="Script" id=1]
 [ext_resource path="res://addons/FracturalFSM/Editor/FlowChart/FlowChartLine.tscn" type="PackedScene" id=2]
+[ext_resource path="res://addons/FracturalFSM/Editor/Transition/draw_rect.gd" type="Script" id=3]
 
 [node name="TransitionLine" instance=ExtResource( 2 )]
 script = ExtResource( 1 )
@@ -15,6 +16,11 @@ grow_horizontal = 0
 grow_vertical = 0
 rect_pivot_offset = Vector2( 0, 2.5 )
 mouse_filter = 2
+custom_constants/margin_right = 10
+custom_constants/margin_top = 10
+custom_constants/margin_left = 10
+custom_constants/margin_bottom = 10
+script = ExtResource( 3 )
 
 [node name="Label" type="Label" parent="MarginContainer" index="0"]
 visible = false

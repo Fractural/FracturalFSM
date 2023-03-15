@@ -6,6 +6,7 @@ using Fractural.Utils;
 
 namespace Fractural.StateMachine
 {
+    [CSharpScript]
     [Tool]
     public class Transition : Resource, IComparable<Transition>
     {
@@ -31,6 +32,7 @@ namespace Fractural.StateMachine
 
         // TODO: Replace Godot Dictionaries with C# Generic Dictionaries
 
+        public Transition() : this("", "", null) { }
         public Transition(string from = "", string to = "", GDC.Dictionary conditions = null)
         {
             From = from;
@@ -79,9 +81,7 @@ namespace Fractural.StateMachine
         public bool AddCondition(Condition condition)
         {
             if (Conditions.Contains(condition.Name))
-            {
                 return false;
-            }
             Conditions[condition.Name] = condition;
             EmitSignal(nameof(ConditionAdded), condition);
             return true;
@@ -108,21 +108,18 @@ namespace Fractural.StateMachine
         /// <summary>
         /// Change condition name, return true if succeeded
         /// </summary>
-        /// <param name="from"></param>
-        /// <param name="to"></param>
+        /// <param name="oldName"></param>
+        /// <param name="newName"></param>
         /// <returns></returns>
-        public bool ChangeConditionName(string from, string to)
+        public bool ChangeConditionName(string oldName, string newName)
         {
-            if (!Conditions.Contains(from) || Conditions.Contains(to))
-            {
+            if (!Conditions.Contains(oldName) || Conditions.Contains(newName))
                 return false;
-            }
-            var condition = Conditions.Get<Condition>(from);
-            condition.Name = to;
-            Conditions.Remove(from);
-            Conditions[to] = condition;
+            var condition = Conditions.Get<Condition>(oldName);
+            condition.Name = newName;
+            Conditions.Remove(oldName);
+            Conditions[newName] = condition;
             return true;
-
         }
 
         public string GetUniqueName(string name)

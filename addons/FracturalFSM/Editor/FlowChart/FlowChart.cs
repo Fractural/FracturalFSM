@@ -8,6 +8,7 @@ using GDC = Godot.Collections;
 
 namespace Fractural.FlowChart
 {
+    // TODO: Add callbacks for selection drag finished, etc. to support undo and redo of graph
     [Tool]
     public class FlowChart : Control
     {
@@ -113,69 +114,6 @@ namespace Fractural.FlowChart
         protected GDC.Array<Control> copyingNodes = new GDC.Array<Control>() { };
         #endregion
 
-        public FlowChart()
-        {
-            FocusMode = FocusModeEnum.All;
-            SelectionStylebox.BgColor = new Color(0, 0, 0, 0.3f);
-            SelectionStylebox.SetBorderWidthAll(1);
-
-            content.MouseFilter = MouseFilterEnum.Ignore;
-            AddChild(content);
-
-            AddChild(hScroll);
-            hScroll.SetAnchorsAndMarginsPreset(LayoutPreset.BottomWide);
-            hScroll.Connect("value_changed", this, nameof(OnHScrollChanged));
-            hScroll.Connect("gui_input", this, nameof(OnHScrollGuiInput));
-
-            AddChild(vScroll);
-            vScroll.SetAnchorsAndMarginsPreset(LayoutPreset.RightWide);
-            vScroll.Connect("value_changed", this, nameof(OnVScrollChanged));
-            vScroll.Connect("gui_input", this, nameof(OnVScrollGuiInput));
-
-            hScroll.MarginRight = -vScroll.RectSize.x;
-            vScroll.MarginBottom = -hScroll.RectSize.y;
-
-            AddLayerTo(content);
-            SelectLayerAt(0);
-
-            topBar.SetAnchorsAndMarginsPreset(LayoutPreset.TopWide);
-            topBar.MouseFilter = MouseFilterEnum.Ignore;
-            AddChild(topBar);
-
-            gadget.MouseFilter = MouseFilterEnum.Ignore;
-            topBar.AddChild(gadget);
-
-            zoomMinus.Flat = true;
-            zoomMinus.HintTooltip = "Zoom Out";
-            zoomMinus.Connect("pressed", this, nameof(OnZoomMinusPressed));
-            zoomMinus.FocusMode = FocusModeEnum.None;
-            gadget.AddChild(zoomMinus);
-
-            zoomReset.Flat = true;
-            zoomReset.HintTooltip = "Zoom Reset";
-            zoomReset.Connect("pressed", this, nameof(OnZoomResetPressed));
-            zoomReset.FocusMode = FocusModeEnum.None;
-            gadget.AddChild(zoomReset);
-
-            zoomPlus.Flat = true;
-            zoomPlus.HintTooltip = "Zoom In";
-            zoomPlus.Connect("pressed", this, nameof(OnZoomPlusPressed));
-            zoomPlus.FocusMode = FocusModeEnum.None;
-            gadget.AddChild(zoomPlus);
-
-            snapButton.Flat = true;
-            snapButton.ToggleMode = true;
-            snapButton.HintTooltip = "Enable snap && show grid";
-            snapButton.Connect("pressed", this, nameof(OnSnapButtonPressed));
-            snapButton.Pressed = true;
-            snapButton.FocusMode = FocusModeEnum.None;
-            gadget.AddChild(snapButton);
-
-            snapAmount.Value = Snap;
-            snapAmount.Connect("value_changed", this, nameof(OnSnapAmountValueChanged));
-            gadget.AddChild(snapAmount);
-        }
-
         #region UI Wiring
         private void OnHScrollGuiInput(InputEvent inputEvent)
         {
@@ -254,6 +192,69 @@ namespace Fractural.FlowChart
         #endregion
 
         #region Godot Lifetime Methods
+        public override void _Ready()
+        {
+            FocusMode = FocusModeEnum.All;
+            SelectionStylebox.BgColor = new Color(0, 0, 0, 0.3f);
+            SelectionStylebox.SetBorderWidthAll(1);
+
+            content.MouseFilter = MouseFilterEnum.Ignore;
+            AddChild(content);
+
+            AddChild(hScroll);
+            hScroll.SetAnchorsAndMarginsPreset(LayoutPreset.BottomWide);
+            hScroll.Connect("value_changed", this, nameof(OnHScrollChanged));
+            hScroll.Connect("gui_input", this, nameof(OnHScrollGuiInput));
+
+            AddChild(vScroll);
+            vScroll.SetAnchorsAndMarginsPreset(LayoutPreset.RightWide);
+            vScroll.Connect("value_changed", this, nameof(OnVScrollChanged));
+            vScroll.Connect("gui_input", this, nameof(OnVScrollGuiInput));
+
+            hScroll.MarginRight = -vScroll.RectSize.x;
+            vScroll.MarginBottom = -hScroll.RectSize.y;
+
+            AddLayerTo(content);
+            SelectLayerAt(0);
+
+            topBar.SetAnchorsAndMarginsPreset(LayoutPreset.TopWide);
+            topBar.MouseFilter = MouseFilterEnum.Ignore;
+            AddChild(topBar);
+
+            gadget.MouseFilter = MouseFilterEnum.Ignore;
+            topBar.AddChild(gadget);
+
+            zoomMinus.Flat = true;
+            zoomMinus.HintTooltip = "Zoom Out";
+            zoomMinus.Connect("pressed", this, nameof(OnZoomMinusPressed));
+            zoomMinus.FocusMode = FocusModeEnum.None;
+            gadget.AddChild(zoomMinus);
+
+            zoomReset.Flat = true;
+            zoomReset.HintTooltip = "Zoom Reset";
+            zoomReset.Connect("pressed", this, nameof(OnZoomResetPressed));
+            zoomReset.FocusMode = FocusModeEnum.None;
+            gadget.AddChild(zoomReset);
+
+            zoomPlus.Flat = true;
+            zoomPlus.HintTooltip = "Zoom In";
+            zoomPlus.Connect("pressed", this, nameof(OnZoomPlusPressed));
+            zoomPlus.FocusMode = FocusModeEnum.None;
+            gadget.AddChild(zoomPlus);
+
+            snapButton.Flat = true;
+            snapButton.ToggleMode = true;
+            snapButton.HintTooltip = "Enable snap && show grid";
+            snapButton.Connect("pressed", this, nameof(OnSnapButtonPressed));
+            snapButton.Pressed = true;
+            snapButton.FocusMode = FocusModeEnum.None;
+            gadget.AddChild(snapButton);
+
+            snapAmount.Value = Snap;
+            snapAmount.Connect("value_changed", this, nameof(OnSnapAmountValueChanged));
+            gadget.AddChild(snapAmount);
+        }
+
         public override void _Draw()
         {
             // Update scrolls
@@ -413,7 +414,6 @@ namespace Fractural.FlowChart
                 switch (mouseMotionEvent.ButtonMask)
                 {
                     case (int)ButtonList.MaskMiddle:
-                        GD.Print("panning with middle mouse button " + hScroll.Value + " " + vScroll.Value + $"  hrange{hScroll.MinValue}:{hScroll.MaxValue}  vrange{vScroll.MinValue}:{vScroll.MaxValue}");
                         // Panning
                         hScroll.Value -= mouseMotionEvent.Relative.x;
                         vScroll.Value -= mouseMotionEvent.Relative.y;
@@ -474,11 +474,12 @@ namespace Fractural.FlowChart
                                     selectedFlowChartNode.RectPosition -= selectedFlowChartNode.RectSize / 2f;
                                     OnNodeDragged(CurrentLayer, selected, dragDelta);
                                     EmitSignal(nameof(Dragged), selected, dragDelta);
+
                                     // Update connection pos
-                                    foreach (string from in CurrentLayer.Connections)
+                                    foreach (string from in CurrentLayer.Connections.Keys)
                                     {
                                         var connectionsFrom = CurrentLayer.Connections.Get<GDC.Dictionary>(from);
-                                        foreach (string to in connectionsFrom)
+                                        foreach (string to in connectionsFrom.Keys)
                                         {
                                             if (from == selected.Name || to == selected.Name)
                                             {
@@ -740,7 +741,6 @@ namespace Fractural.FlowChart
                                 }
                                 dragStartPos = dragEndPos;
                                 Update();
-
                             }
                         }
                         break;
@@ -822,12 +822,9 @@ namespace Fractural.FlowChart
         /// <param name="line"></param>
         public void ConnectNode(FlowChartLayer layer, string from, string to, FlowChartLine line = null)
         {
-            if (line != null)
-            {
+            if (line == null)
                 line = CreateLineInstance();
-            }
-            line.Name = $"{from}>{to}"; // "From>To"
-
+            line.Name = GetFlowChartLineName(from, to);
             layer.ConnectNode(line, from, to, InterconnectionOffset);
             OnNodeConnected(layer, from, to);
             EmitSignal(nameof(ConnectionEstablished), from, to, line);
@@ -874,7 +871,6 @@ namespace Fractural.FlowChart
             selectable.Selected = true;
             dragOrigins.Add(node.RectPosition);
             EmitSignal(nameof(NodeSelected), node);
-
         }
 
         /// <summary>
@@ -883,12 +879,12 @@ namespace Fractural.FlowChart
         /// <param name="node"></param>
         public void Deselect(Control node)
         {
-            selection.Remove(node);
+            int index = selection.IndexOf(node);
+            if (index < 0) return;
             if (IsInstanceValid(node) && node is ISelectable selectable)
-            {
                 selectable.Selected = false;
-            }
-            dragOrigins.PopBack();
+            selection.RemoveAt(index);
+            dragOrigins.RemoveAt(index);
             EmitSignal(nameof(NodeDeselected), node);
         }
 
@@ -939,7 +935,7 @@ namespace Fractural.FlowChart
                 {
                     if (fromNode.Name == connectionPair.From)
                     {
-                        for (int j = 0; i < controlNodes.Count; i++)
+                        for (int j = 0; j < controlNodes.Count; j++)
                         {
                             var toNode = controlNodes[j];
                             if (toNode.Name == connectionPair.To)
@@ -973,7 +969,6 @@ namespace Fractural.FlowChart
             Vector2 pos = new Vector2(Mathf.Min(dragStartPos.x, dragEndPos.x), Mathf.Min(dragStartPos.y, dragEndPos.y));
             var Size = (dragEndPos - dragStartPos).Abs();
             return new Rect2(pos, Size);
-
         }
 
         /// <summary>
@@ -1081,10 +1076,9 @@ namespace Fractural.FlowChart
         /// </summary>
         /// <param name="layer"></param>
         /// <param name="node"></param>
-        /// <param name="dragDelta"></param>
-        protected virtual void OnNodeDragged(FlowChartLayer layer, Control node, Vector2 dragDelta)
+        /// <param name="netDragDelta"></param>
+        protected virtual void OnNodeDragged(FlowChartLayer layer, Control node, Vector2 netDragDelta)
         {
-
 
         }
 
@@ -1151,6 +1145,15 @@ namespace Fractural.FlowChart
         protected virtual void OnDuplicated(FlowChartLayer layer, GDC.Array<Control> oldNodes, GDC.Array<Control> newNodes)
         {
         }
+        #endregion
+
+        #region Utils
+        /// <summary>
+        /// Used for looking up the transition line using GetNode
+        /// </summary>
+        /// <param name="transitionLine"></param>
+        /// <returns></returns>
+        public static string GetFlowChartLineName(string from, string to) => $"{from}>{to}";
         #endregion
     }
 }

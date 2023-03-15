@@ -40,11 +40,12 @@ namespace Fractural.StateMachine
         private VBoxContainer conditionList;
 
         private UndoRedo undoRedo;
+        private Texture transitionIcon;
 
         private Transition transition;
         public Transition Transition
         {
-            get => Transition;
+            get => transition;
             set
             {
                 if (transition != value)
@@ -55,32 +56,26 @@ namespace Fractural.StateMachine
             }
         }
 
-        private GDC.Array<Node> toFree;
+        private GDC.Array<Node> toFree = new GDC.Array<Node>();
 
-        public TransitionEditor()
-        {
-            toFree = new GDC.Array<Node>();
-        }
-
-        public void Construct(UndoRedo undoRedo, Transition transition, Texture transitionIcon)
+        public void PreReadyConstruct(UndoRedo undoRedo, Transition transition, Texture transitionIcon)
         {
             this.undoRedo = undoRedo;
             this.transition = transition;
-            this.titleIcon.Texture = transitionIcon;
+            this.transitionIcon = transitionIcon;
         }
 
         [OnReady]
         public void RealReady()
         {
+            addPopupMenu.Clear();
             int nextFreeId = 0;
-            GD.Print("Before conditon processors");
             foreach (ConditionProcessor processor in conditionProcessors)
             {
                 processor.ID = nextFreeId;
                 addPopupMenu.AddItem(processor.ConditionName, nextFreeId);
                 nextFreeId++;
             }
-            GD.Print("After conditon processors");
 
             header.Connect("gui_input", this, nameof(OnHeaderGuiInput));
             prioritySpinbox.Connect("value_changed", this, nameof(OnPrioritySpinboxValueChanged));
@@ -88,6 +83,7 @@ namespace Fractural.StateMachine
             addPopupMenu.Connect("index_pressed", this, nameof(OnAddPopupMenuIndexPressed));
 
             priorityIcon.Texture = GetIcon("AnimationTrackList", "EditorIcons");
+            titleIcon.Texture = transitionIcon;
 
             // Manually invoke transition changed to update everything
             if (transition != null)
@@ -99,7 +95,7 @@ namespace Fractural.StateMachine
             FreeNodeFromUndoRedo(); // Managed by EditorInspector
         }
 
-        public void OnHeaderGuiInput(InputEvent @event)
+        private void OnHeaderGuiInput(InputEvent @event)
         {
             if (@event is InputEventMouseButton mouseButtonEvent &&
                 mouseButtonEvent.ButtonIndex == (int)ButtonList.Left
@@ -109,17 +105,17 @@ namespace Fractural.StateMachine
             }
         }
 
-        public void OnPrioritySpinboxValueChanged(int val)
+        private void OnPrioritySpinboxValueChanged(int val)
         {
             SetPriority(val);
         }
 
-        public void OnAddPressed()
+        private void OnAddPressed()
         {
             Utils.PopupOnTarget(addPopupMenu, add);
         }
 
-        public void OnAddPopupMenuIndexPressed(int index)
+        private void OnAddPopupMenuIndexPressed(int index)
         {
             Condition condition = null;
             foreach (ConditionProcessor processor in conditionProcessors)
@@ -142,12 +138,12 @@ namespace Fractural.StateMachine
             AddConditionEditorAction(editor, condition);
         }
 
-        public void OnConditionEditorRemoved(ConditionEditor editor)
+        private void OnConditionEditorRemoved(ConditionEditor editor)
         {
             RemoveConditionEditorAction(editor);
         }
 
-        public void OnTransitionChanged(Transition newTransition)
+        private void OnTransitionChanged(Transition newTransition)
         {
             if (newTransition == null)
                 return;
@@ -162,27 +158,25 @@ namespace Fractural.StateMachine
             UpdateTitle();
             UpdateConditionCount();
             UpdatePrioritySpinboxValue();
-
         }
 
-        public void OnConditionEditorAdded(ConditionEditor editor)
+        private void OnCondtionEditorNewNameEntered(string newName, ConditionEditor editor)
         {
-            editor.Construct(undoRedo);
-            if (!editor.IsConnected(nameof(ConditionEditor.Removed), this, nameof(OnConditionEditorRemoved)))
-                editor.Connect(nameof(ConditionEditor.Removed), this, nameof(OnConditionEditorRemoved), GDUtils.GDParams(editor));
+            if (!Transition.ChangeConditionName(editor.Condition.Name, newName))
+                editor.RevertConditionName();
+        }
 
+        private void AddConditionEditor(ConditionEditor editor, Condition condition)
+        {
+            conditionList.AddChild(editor);
+            editor.Construct(undoRedo, condition); // Must be assigned after enter tree, as assignment would trigger ui code
+            editor.TryConnect(nameof(ConditionEditor.Removed), this, nameof(OnConditionEditorRemoved), GDUtils.GDParams(editor));
+            editor.TryConnect(nameof(ConditionEditor.NewNameEntered), this, nameof(OnCondtionEditorNewNameEntered), GDUtils.GDParams(editor));
             transition.AddCondition(editor.Condition);
             UpdateConditionCount();
         }
 
-        public void AddConditionEditor(ConditionEditor editor, Condition condition)
-        {
-            conditionList.AddChild(editor);
-            editor.Condition = condition; // Must be assigned after enter tree, as assignment would trigger ui code
-            OnConditionEditorAdded(editor);
-        }
-
-        public void RemoveConditionEditor(ConditionEditor editor)
+        private void RemoveConditionEditor(ConditionEditor editor)
         {
             transition.RemoveCondition(editor.Condition.Name);
             conditionList.RemoveChild(editor);
@@ -190,13 +184,13 @@ namespace Fractural.StateMachine
             UpdateConditionCount();
         }
 
-        public void UpdateTitle()
+        private void UpdateTitle()
         {
             from.Text = transition.From;
             to.Text = transition.To;
         }
 
-        public void UpdateConditionCount()
+        private void UpdateConditionCount()
         {
             var count = transition.Conditions.Count;
             conditionCountLabel.Text = GD.Str(count);
@@ -206,33 +200,33 @@ namespace Fractural.StateMachine
                 ShowConditions();
         }
 
-        public void UpdatePrioritySpinboxValue()
+        private void UpdatePrioritySpinboxValue()
         {
             prioritySpinbox.Value = transition.priority;
             prioritySpinbox.Apply();
         }
 
-        public void SetPriority(int value)
+        private void SetPriority(int value)
         {
             transition.priority = value;
         }
 
-        public void ShowConditions()
+        private void ShowConditions()
         {
             contentContainer.Visible = true;
         }
 
-        public void HideConditions()
+        private void HideConditions()
         {
             contentContainer.Visible = false;
         }
 
-        public void ToggleConditions()
+        private void ToggleConditions()
         {
             contentContainer.Visible = !contentContainer.Visible;
         }
 
-        public ConditionEditor CreateConditionEditor(Condition condition)
+        private ConditionEditor CreateConditionEditor(Condition condition)
         {
             foreach (ConditionProcessor processor in conditionProcessors)
             {
@@ -243,16 +237,15 @@ namespace Fractural.StateMachine
             return null;
         }
 
-        public void AddConditionEditorAction(ConditionEditor editor, Condition condition)
+        private void AddConditionEditorAction(ConditionEditor editor, Condition condition)
         {
             undoRedo.CreateAction("Add Transition Condition");
             undoRedo.AddDoMethod(this, nameof(AddConditionEditor), editor, condition);
             undoRedo.AddUndoMethod(this, nameof(RemoveConditionEditor), editor);
             undoRedo.CommitAction();
-
         }
 
-        public void RemoveConditionEditorAction(ConditionEditor editor)
+        private void RemoveConditionEditorAction(ConditionEditor editor)
         {
             undoRedo.CreateAction("Remove Transition Condition");
             undoRedo.AddDoMethod(this, nameof(RemoveConditionEditor), editor);
@@ -264,7 +257,7 @@ namespace Fractural.StateMachine
         /// <summary>
         /// Free nodes cached in UndoRedo stack
         /// </summary>
-        public void FreeNodeFromUndoRedo()
+        private void FreeNodeFromUndoRedo()
         {
             foreach (var node in toFree)
             {
@@ -274,7 +267,7 @@ namespace Fractural.StateMachine
                 }
             }
             toFree.Clear();
-            undoRedo.ClearHistory(false);// TODO: Should be handled by plugin.Gd (Temporary solution as only TransitionEditor support undo/redo)
+            undoRedo?.ClearHistory(false);// TODO: Should be handled by plugin.Gd (Temporary solution as only TransitionEditor support undo/redo)
         }
     }
 }

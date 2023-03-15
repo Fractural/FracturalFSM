@@ -1,6 +1,9 @@
+using Godot;
+
 namespace Fractural.StateMachine
 {
-    public class FloatConditionProcessor : ConditionProcessor<BoolCondition>
+    [Tool]
+    public class FloatConditionProcessor : ConditionProcessor<FloatCondition>
     {
         public override string ConditionName => "Float";
     }

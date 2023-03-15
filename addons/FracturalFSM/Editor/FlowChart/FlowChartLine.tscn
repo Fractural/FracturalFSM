@@ -9,7 +9,7 @@ data = {
 "width": 20
 }
 
-[sub_resource type="ImageTexture" id=2]
+[sub_resource type="ImageTexture" id=9]
 flags = 4
 flags = 4
 image = SubResource( 8 )
@@ -17,7 +17,7 @@ size = Vector2( 20, 20 )
 
 [sub_resource type="StyleBoxFlat" id=3]
 bg_color = Color( 1, 1, 1, 1 )
-shadow_color = Color( 0.960784, 0.772549, 0.333333, 1 )
+shadow_color = Color( 0.831373, 0.266667, 0.341176, 1 )
 shadow_size = 2
 
 [sub_resource type="StyleBoxFlat" id=4]
@@ -32,7 +32,7 @@ shadow_color = Color( 0.2, 0.2, 0.2, 1 )
 shadow_size = 1
 
 [sub_resource type="Theme" id=5]
-FlowChartLine/icons/arrow = SubResource( 2 )
+FlowChartLine/icons/arrow = SubResource( 9 )
 FlowChartLine/styles/focus = SubResource( 3 )
 FlowChartLine/styles/normal = SubResource( 4 )
 
@@ -135,6 +135,3 @@ focus_mode = 1
 mouse_filter = 2
 theme = SubResource( 5 )
 script = SubResource( 7 )
-__meta__ = {
-"_edit_use_anchors_": false
-}

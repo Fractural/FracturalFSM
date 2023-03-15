@@ -13,9 +13,9 @@ namespace Fractural.StateMachine
         [OnReadyGet("MarginContainer/BooleanValue")]
         public CheckButton booleanValue;
 
-        public override void RealReady()
+        [OnReady]
+        public new void RealReady()
         {
-            base.RealReady();
             booleanValue.Connect("pressed", this, nameof(OnBooleanValuePressed));
         }
 
@@ -25,11 +25,10 @@ namespace Fractural.StateMachine
                 booleanValue.Pressed = newValue;
         }
 
-        protected override void OnConditionChanged(Condition newCondition)
+        protected override void InitializeCondition()
         {
-            base.OnConditionChanged(newCondition);
-            if (newCondition != null)
-                booleanValue.Pressed = TypedValueCondition.TypedValue;
+            base.InitializeCondition();
+            booleanValue.Pressed = TypedValueCondition.TypedValue;
         }
 
         private void OnBooleanValuePressed()

@@ -15,8 +15,8 @@ namespace Fractural.StateMachine
 
         private int _oldValue = 0;
 
-
-        public override void RealReady()
+        [OnReady]
+        public new void RealReady()
         {
             integerValue.Connect("text_entered", this, nameof(OnIntegerValueTextEntered));
             integerValue.Connect("focus_entered", this, nameof(OnIntegerValueFocusEntered));
@@ -32,19 +32,21 @@ namespace Fractural.StateMachine
 
         protected override void OnTypedValueChanged(int newValue)
         {
-            integerValue.Text = GD.Str(newValue);
+            integerValue.Text = newValue.ToString();
         }
 
-        protected override void OnConditionChanged(Condition newCondition)
+        protected override void InitializeCondition()
         {
-            base.OnConditionChanged(newCondition);
-            if (newCondition != null)
-                integerValue.Text = TypedValueCondition.TypedValue.ToString();
+            base.InitializeCondition();
+            integerValue.Text = TypedValueCondition.TypedValue.ToString();
         }
 
         private void OnIntegerValueTextEntered(string newText)
         {
-            ChangeValueAction(_oldValue, int.Parse(newText));
+            if (int.TryParse(newText, out int result))
+                ChangeValueAction(_oldValue, result);
+            else
+                integerValue.Text = _oldValue.ToString();
             integerValue.ReleaseFocus();
         }
 
@@ -57,7 +59,7 @@ namespace Fractural.StateMachine
         private void OnIntegerValueFocusExited()
         {
             SetProcessInput(false);
-            ChangeValueAction(_oldValue, int.Parse(integerValue.Text));
+            OnIntegerValueTextEntered(integerValue.Text);
         }
     }
 }

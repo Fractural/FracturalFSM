@@ -80,8 +80,6 @@ namespace Fractural.FlowChart
                     if (clipped.Count == 0)
                         break;
 
-                    GD.Print("clipped: ", clipped);
-
                     Vector2 lineFrom = clipped.ElementAt<Vector2>(0, 0);
                     Vector2 lineTo = clipped.ElementAt<Vector2>(0, 1);
                     clipped = Geometry.ClipPolylineWithPolygon2d(
@@ -96,7 +94,6 @@ namespace Fractural.FlowChart
                 }
             if (clipped.Count > 0)
             {
-                GD.Print("clipped count > 0 clipped: " + JSON.Print(clipped));
                 from = clipped.ElementAt<Vector2>(0, 0);
                 to = clipped.ElementAt<Vector2>(0, 1);
             }
