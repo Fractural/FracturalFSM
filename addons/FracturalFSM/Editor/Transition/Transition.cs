@@ -37,7 +37,7 @@ namespace Fractural.StateMachine
         {
             From = from;
             To = to;
-            Conditions = conditions;
+            Conditions = conditions ?? new GDC.Dictionary();
         }
 
         /// <summary>

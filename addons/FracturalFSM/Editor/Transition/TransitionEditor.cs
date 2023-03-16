@@ -147,7 +147,6 @@ namespace Fractural.StateMachine
         {
             if (newTransition == null)
                 return;
-
             foreach (Condition condition in transition.Conditions.Values)
             {
                 var editor = CreateConditionEditor(condition);

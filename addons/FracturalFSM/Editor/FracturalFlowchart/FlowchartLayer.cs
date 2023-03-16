@@ -235,7 +235,15 @@ namespace Fractural.Flowchart
                 Connections[from] = connectionsFrom;
             }
             connectionsFrom[to] = connection;
-            AddConnectionLine(connection);
+
+            // Must have call deferred here otherwise we get the error:
+            // 
+            // Failed method: MarginContainer:_update_callback target ID: 170221
+            // Object was deleted while awaiting a callback
+            //
+            // This seems be caused by too many update calls (maybe even recursive update calls?)
+            // https://godotforums.org/d/31530-error-message-queue-out-of-memory-in-a-for-loop
+            CallDeferred(nameof(AddConnectionLine), connection);
 
             // Check if connection in both ways
             connectionsFrom = Connections.Get<GDC.Dictionary>(to);

@@ -567,7 +567,6 @@ namespace Fractural.Flowchart
                             }
                             dragEndPos = GetLocalMousePosition();
                             Update();
-
                         }
                         break;
                 }
@@ -742,6 +741,7 @@ namespace Fractural.Flowchart
                                     {
                                         // New Connection
                                         CurrentLayer.ContentLines.RemoveChild(currentConnection.Line);
+
                                         line = currentConnection.Line;
                                         currentConnection.ToNode = flowChartNode;
                                         ConnectNode(CurrentLayer, from, to, line);
@@ -764,6 +764,7 @@ namespace Fractural.Flowchart
                                         OnNodeConnectFailed(CurrentLayer, from);
                                     }
                                 }
+
                                 isConnecting = false;
                                 currentConnection = null;
                                 AcceptEvent();

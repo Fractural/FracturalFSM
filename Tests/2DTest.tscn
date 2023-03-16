@@ -1,8 +1,7 @@
-[gd_scene load_steps=25 format=2]
+[gd_scene load_steps=19 format=2]
 
 [ext_resource path="res://addons/FracturalFSM/Editor/Transition/Transition.cs" type="Script" id=1]
 [ext_resource path="res://addons/FracturalFSM/Editor/Conditions/TriggerCondition/TriggerCondition.cs" type="Script" id=2]
-[ext_resource path="res://addons/FracturalFSM/Editor/Conditions/BoolCondition/BoolCondition.cs" type="Script" id=3]
 [ext_resource path="res://Tests/Player.cs" type="Script" id=4]
 [ext_resource path="res://icon.png" type="Texture" id=5]
 [ext_resource path="res://addons/FracturalFSM/CustomTypes/StateMachine.cs" type="Script" id=6]
@@ -12,14 +11,14 @@
 [sub_resource type="Resource" id=2]
 script = ExtResource( 8 )
 __meta__ = {
-"graph_offset": Vector2( 308, 100 )
+"graph_offset": Vector2( 248, 240 )
 }
 Name = "Entry"
 
 [sub_resource type="Resource" id=42]
 script = ExtResource( 8 )
 __meta__ = {
-"graph_offset": Vector2( 588, 380 )
+"graph_offset": Vector2( 568, 420 )
 }
 Name = "Fall"
 
@@ -40,32 +39,9 @@ Name = "Jump(n)"
 [sub_resource type="Resource" id=51]
 script = ExtResource( 8 )
 __meta__ = {
-"graph_offset": Vector2( 588, 120 )
+"graph_offset": Vector2( 488, 160 )
 }
-Name = "Idle"
-
-[sub_resource type="Resource" id=5]
-script = ExtResource( 1 )
-From = "Entry"
-To = "Idle"
-Conditions = {
-}
-priority = 0
-
-[sub_resource type="Resource" id=46]
-script = ExtResource( 3 )
-Name = "on_floor"
-Comparation = 0
-value = true
-
-[sub_resource type="Resource" id=47]
-script = ExtResource( 1 )
-From = "Fall"
-To = "Idle"
-Conditions = {
-"on_floor": SubResource( 46 )
-}
-priority = 0
+Name = "State"
 
 [sub_resource type="Resource" id=48]
 script = ExtResource( 2 )
@@ -77,19 +53,6 @@ From = "Fall"
 To = "Jump(n)"
 Conditions = {
 "space": SubResource( 48 )
-}
-priority = 0
-
-[sub_resource type="Resource" id=43]
-script = ExtResource( 2 )
-Name = "space"
-
-[sub_resource type="Resource" id=44]
-script = ExtResource( 1 )
-From = "Idle"
-To = "Jump"
-Conditions = {
-"space": SubResource( 43 )
 }
 priority = 0
 
@@ -107,20 +70,13 @@ Name = ""
 States = {
 "Entry": SubResource( 2 ),
 "Fall": SubResource( 42 ),
-"Idle": SubResource( 51 ),
 "Jump": SubResource( 50 ),
-"Jump(n)": SubResource( 41 )
+"Jump(n)": SubResource( 41 ),
+"State": SubResource( 51 )
 }
 transitions = {
-"Entry": {
-"Idle": SubResource( 5 )
-},
 "Fall": {
-"Idle": SubResource( 47 ),
 "Jump(n)": SubResource( 49 )
-},
-"Idle": {
-"Jump": SubResource( 44 )
 },
 "Jump": {
 "Fall": SubResource( 45 )
