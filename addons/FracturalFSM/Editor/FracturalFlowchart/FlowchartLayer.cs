@@ -293,7 +293,10 @@ namespace Fractural.Flowchart
         {
             foreach (GDC.Dictionary connectionsFrom in Connections.Values)
                 foreach (Connection connection in connectionsFrom.Values)
+                {
+                    ContentLines.RemoveChild(connection.Line);
                     connection.Line.QueueFree();
+                }
 
             Connections.Clear();
         }

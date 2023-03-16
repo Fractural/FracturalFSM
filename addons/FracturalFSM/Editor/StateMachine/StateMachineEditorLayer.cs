@@ -27,16 +27,7 @@ namespace Fractural.StateMachine
         public override void _Ready()
         {
             base._Ready();
-            GD.Print("Readied layer, ", GetPath());
             tween.Start();
-        }
-
-        public override void _Notification(int what)
-        {
-            if (what == NotificationPredelete)
-            {
-                GD.Print("Deleting layer, ", GetPath());
-            }
         }
 
         public void Construct(Color editorAccentColor)
@@ -49,6 +40,7 @@ namespace Fractural.StateMachine
         // TODO: Refactor this hacky mess it's soo coupled... :(
         public void DebugUpdate(string currentState, GDC.Dictionary parameters, GDC.Dictionary localParameters)
         {
+            int DEBUG = 0;
             if (StateMachine == null)
                 return;
 
@@ -62,6 +54,8 @@ namespace Fractural.StateMachine
             foreach (Transition transition in transitions.Values)
             {
                 var line = ContentLines.GetNodeOrNull<TransitionLine>(TransitionLine.GetTransitionLineName(transition));
+                if (line == null)
+                    EditorHackUtils.PrintTree(this);
                 line.DebugUpdate(tween, parameters, localParameters);
             }
             tween.Start();
@@ -91,6 +85,7 @@ namespace Fractural.StateMachine
             // Fade out color of StateNode
             foreach (Transition transition in transitions.Values)
             {
+                int NESTED = 0;
                 // Transition out all the transition lines for the current state's transitions
                 var line = ContentLines.GetNodeOrNull<TransitionLine>(TransitionLine.GetTransitionLineName(transition));
                 bool isTransitionToEndState = transition.To == toDir.End;

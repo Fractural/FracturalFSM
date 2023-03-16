@@ -64,3 +64,7 @@ transitions = {
 [node name="StateMachinePlayer" type="Node" parent="."]
 script = ExtResource( 1 )
 StateMachineResource = SubResource( 3 )
+parameters = {
+}
+localParameters = {
+}

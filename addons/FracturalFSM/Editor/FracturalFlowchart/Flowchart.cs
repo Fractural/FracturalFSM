@@ -953,10 +953,25 @@ namespace Fractural.Flowchart
         /// Clear all connections
         /// </summary>
         /// <param name="layer"></param>
-        public void ClearConnections(FlowchartLayer layer = null)
+        public virtual void ClearConnections(FlowchartLayer layer = null)
         {
             if (layer == null) layer = CurrentLayer;
             layer.ClearConnections();
+        }
+
+        /// <summary>
+        /// Clears all nodes and connections
+        /// </summary>
+        /// <param name="layer"></param>
+        public virtual void ClearGraph(FlowchartLayer layer = null)
+        {
+            if (layer == null) layer = CurrentLayer;
+            ClearConnections();
+            foreach (Control child in layer.ContentNodes.GetChildren())
+            {
+                layer.ContentNodes.RemoveChild(child);
+                child.QueueFree();
+            }
         }
 
         /// <summary>

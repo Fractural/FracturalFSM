@@ -12,37 +12,37 @@
 [sub_resource type="Resource" id=2]
 script = ExtResource( 8 )
 __meta__ = {
-"graph_offset": Vector2( 368, 80 )
+"graph_offset": Vector2( 388, 40 )
 }
 Name = "Entry"
 
 [sub_resource type="Resource" id=42]
 script = ExtResource( 8 )
 __meta__ = {
-"graph_offset": Vector2( 648, 260 )
+"graph_offset": Vector2( 628, 220 )
 }
 Name = "Fall"
 
 [sub_resource type="Resource" id=40]
 script = ExtResource( 8 )
 __meta__ = {
-"graph_offset": Vector2( 528, 60 )
+"graph_offset": Vector2( 708, 60 )
 }
 Name = "Idle"
-
-[sub_resource type="Resource" id=41]
-script = ExtResource( 8 )
-__meta__ = {
-"graph_offset": Vector2( 864, 220 )
-}
-Name = "Jump(n)"
 
 [sub_resource type="Resource" id=50]
 script = ExtResource( 8 )
 __meta__ = {
-"graph_offset": Vector2( 848, 80 )
+"graph_offset": Vector2( 908, 60 )
 }
 Name = "Jump"
+
+[sub_resource type="Resource" id=41]
+script = ExtResource( 8 )
+__meta__ = {
+"graph_offset": Vector2( 824, 200 )
+}
+Name = "Jump(n)"
 
 [sub_resource type="Resource" id=5]
 script = ExtResource( 1 )
@@ -144,10 +144,6 @@ StateMachinePlayerPath = NodePath("StateMachinePlayer")
 [node name="StateMachinePlayer" type="Node" parent="Player"]
 script = ExtResource( 7 )
 StateMachineResource = SubResource( 3 )
-parameters = {
-}
-localParameters = {
-}
 
 [node name="Sprite" type="Sprite" parent="Player"]
 scale = Vector2( 0.241245, 0.241245 )

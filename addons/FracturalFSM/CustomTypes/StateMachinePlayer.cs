@@ -87,7 +87,7 @@ namespace Fractural.StateMachine
         public override string Previous => base.Previous != null ? base.Previous : "";
         [Export]
         // TODO: Figure out if duplicating is necessary
-        private GDC.Dictionary parameters; // Parameters to be passed to condition
+        private GDC.Dictionary parameters = new GDC.Dictionary(); // Parameters to be passed to condition
         /// <summary>
         /// Get duplicate of whole parameter dictionary
         /// </summary>
@@ -95,7 +95,7 @@ namespace Fractural.StateMachine
         public GDC.Dictionary Parameters => parameters.Duplicate();
 
         [Export]
-        private GDC.Dictionary localParameters;
+        private GDC.Dictionary localParameters = new GDC.Dictionary();
         public GDC.Dictionary LocalParamters => localParameters.Duplicate();
 
         private bool isStarted = false;

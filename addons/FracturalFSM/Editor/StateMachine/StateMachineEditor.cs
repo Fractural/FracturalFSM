@@ -158,8 +158,8 @@ namespace Fractural.StateMachine
         {
             if (!IsUnloaded) Unload();
             ConfigureDebugMode(false);
-            ConfigureNewStateMachine(stateMachine);
             ConfigureNewStateMachinePlayer(null);
+            ConfigureNewStateMachine(stateMachine);
             RemoteStateMachinePlayer = null;
         }
 
@@ -171,8 +171,8 @@ namespace Fractural.StateMachine
         {
             if (!IsUnloaded) Unload();
             ConfigureDebugMode(false);
-            ConfigureNewStateMachine(player.StateMachine);
             ConfigureNewStateMachinePlayer(player);
+            ConfigureNewStateMachine(player.StateMachine);
             RemoteStateMachinePlayer = null;
         }
 
@@ -185,8 +185,8 @@ namespace Fractural.StateMachine
             if (!IsUnloaded) Unload();
             // Turn on debugging mode
             ConfigureDebugMode(true);
-            ConfigureNewStateMachine(remotePlayer.StateMachine);
             ConfigureNewStateMachinePlayer(null);
+            ConfigureNewStateMachine(remotePlayer.StateMachine);
             RemoteStateMachinePlayer = remotePlayer;
         }
 
@@ -203,6 +203,7 @@ namespace Fractural.StateMachine
             ConfigureNewStateMachinePlayer(null);
             RemoteStateMachinePlayer = null;
             ClearNonRootLayers();
+            currentDebugState = "";
         }
 
         public void ClearNonRootLayers()
@@ -781,20 +782,12 @@ namespace Fractural.StateMachine
         }
 
         /// <summary>
-        /// Clear editor
+        /// Clears a graph layer
         /// </summary>
         /// <param name="layer"></param>
-        private void ClearGraph(FlowchartLayer layer)
+        public override void ClearGraph(FlowchartLayer layer)
         {
-            ClearConnections();
-            foreach (Control child in layer.ContentNodes.GetChildren())
-            {
-                if (child is StateNode)
-                {
-                    layer.ContentNodes.RemoveChild(child);
-                    child.QueueFree();
-                }
-            }
+            base.ClearGraph(layer);
             unsavedIndicator.Text = ""; // Clear graph is not action by user
         }
 
