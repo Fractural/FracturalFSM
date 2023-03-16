@@ -36,11 +36,20 @@ namespace Fractural.StateMachine
             editorComplementaryColor = Utils.GetComplementaryColor(editorAccentColor);
         }
 
+        public override void ClearGraph()
+        {
+            base.ClearGraph();
+            // Also stop the tween. Note that tween.StopAll() doesn't stop the tweens in time before the nodes get deleted.
+            // We must replace the entire tween to prevent errors.
+            tween.QueueFree();
+            tween = new Tween();
+            AddChild(tween);
+        }
+
         #region Debug Display
         // TODO: Refactor this hacky mess it's soo coupled... :(
         public void DebugUpdate(string currentState, GDC.Dictionary parameters, GDC.Dictionary localParameters)
         {
-            int DEBUG = 0;
             if (StateMachine == null)
                 return;
 
@@ -54,8 +63,6 @@ namespace Fractural.StateMachine
             foreach (Transition transition in transitions.Values)
             {
                 var line = ContentLines.GetNodeOrNull<TransitionLine>(TransitionLine.GetTransitionLineName(transition));
-                if (line == null)
-                    EditorHackUtils.PrintTree(this);
                 line.DebugUpdate(tween, parameters, localParameters);
             }
             tween.Start();

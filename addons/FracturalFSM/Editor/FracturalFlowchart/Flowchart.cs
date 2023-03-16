@@ -39,6 +39,11 @@ namespace Fractural.Flowchart
         /// <param name="node"></param>
         [Signal] public delegate void NodeDeselected(Control node);
         /// <summary>
+        /// When nothing is selected
+        /// </summary>
+        /// <param name="node"></param>
+        [Signal] public delegate void NothingSelected();
+        /// <summary>
         /// When a node dragged
         /// </summary>
         /// <param name="node"></param>
@@ -106,10 +111,26 @@ namespace Fractural.Flowchart
         #endregion
 
         #region Private Fields
-        protected bool isConnecting = false;
+        /// <summary>
+        /// The current connection the user is trying to make by left-click-dragging their mouse from a node
+        /// </summary>
         protected Connection currentConnection;
+        /// <summary>
+        /// Is the user currently dragging their mouse
+        /// </summary>
         protected bool isDragging = false;
+        /// <summary>
+        /// Is the user trying to make a connection by left-click-dragging their mouse from a node?
+        /// </summary>
+        protected bool isConnecting = false;
+        /// <summary>
+        /// Is the user dragging a group of nodes and/or lines?
+        /// </summary>
         protected bool isDraggingNode = false;
+        /// <summary>
+        /// Is the user dragging in the background?
+        /// </summary>
+        protected bool isDraggingOnBlankspace => isDragging && !isDraggingNode && !isConnecting;
         protected Vector2 dragStartPos = Vector2.Zero;
         protected Vector2 dragEndPos = Vector2.Zero;
         protected GDC.Array<Vector2> dragOrigins = new GDC.Array<Vector2>() { };
@@ -367,7 +388,7 @@ namespace Fractural.Flowchart
                 vScroll.Show();
 
             // Draw selection box
-            if (!isDraggingNode && !isConnecting)
+            if (isDraggingOnBlankspace)
             {
                 var selectionBoxRect = GetSelectionBoxRect();
                 DrawStyleBox(SelectionStylebox, selectionBoxRect);
@@ -618,8 +639,10 @@ namespace Fractural.Flowchart
                                 hitNode = CurrentLayer.GetConnection(connectionList[closest]).Line;
                             }
                         }
+
                         if (mouseButtonEvent.Pressed)
                         {
+                            // Pressed
                             if (!selection.Contains(hitNode) && !mouseButtonEvent.Shift)
                             {
                                 // Click on empty space
@@ -666,7 +689,7 @@ namespace Fractural.Flowchart
                                             var line = CreateLineInstance();
                                             var connection = new Connection(line, flowChartNode, null);
 
-                                            CurrentLayer.AfterConnectNode(connection);
+                                            CurrentLayer.AddConnectionLine(connection);
                                             currentConnection = connection;
                                             currentConnection.Line.Join(currentConnection.GetFromPos(), ContentPosition(mouseButtonEvent.Position));
                                         }
@@ -695,8 +718,7 @@ namespace Fractural.Flowchart
                         }
                         else
                         {
-                            var wasConnecting = isConnecting;
-                            var wasDraggingNode = isDraggingNode;
+                            // Left click released
                             if (currentConnection != null)
                             {
                                 // Connection end
@@ -710,7 +732,7 @@ namespace Fractural.Flowchart
                                     FlowchartLine line;
                                     if (currentConnection.ToNode != null)
                                     {
-                                        // Reconnection
+                                        // This is a reconnection
                                         line = DisconnectNode(CurrentLayer, from, currentConnection.ToNode.Name);
                                         currentConnection.ToNode = flowChartNode;
                                         OnNodeReconnectEnd(CurrentLayer, from, to);
@@ -730,7 +752,8 @@ namespace Fractural.Flowchart
                                     // Connection failed
                                     if (currentConnection.ToNode != null)
                                     {
-                                        // Reconnection
+                                        // This is a reconnection
+                                        // Rejoin the line back to where it was before
                                         currentConnection.Join();
                                         OnNodeReconnectFailed(CurrentLayer, from, Name);
                                     }
@@ -749,22 +772,15 @@ namespace Fractural.Flowchart
                             if (isDragging)
                             {
                                 // Drag end
-                                isDragging = false;
-                                isDraggingNode = false;
-                                if (!(wasConnecting || wasDraggingNode) && CanGuiSelectNode)
+                                if (isDraggingOnBlankspace && CanGuiSelectNode)
                                 {
                                     var selectionBoxRect = GetSelectionBoxRect();
                                     // Select node
                                     foreach (Control node in CurrentLayer.ContentNodes.GetChildren())
                                     {
                                         var rect = GetTransform() * (content.GetTransform() * node.GetRect());
-                                        if (selectionBoxRect.Intersects(rect))
-                                        {
-                                            if (node is FlowchartNode)
-                                            {
-                                                Select(node);
-                                            }
-                                        }
+                                        if (selectionBoxRect.Intersects(rect) && node is FlowchartNode)
+                                            Select(node);
                                     }
                                     // Select line
                                     var connectionList = GetConnectionList();
@@ -779,7 +795,7 @@ namespace Fractural.Flowchart
                                             Select(connection.Line);
                                     }
                                 }
-                                if (wasDraggingNode)
+                                if (isDraggingNode)
                                 {
                                     // Update _dragOrigins with new Position after dragged
                                     for (int i = 0; i < selection.Count; i++)
@@ -791,7 +807,11 @@ namespace Fractural.Flowchart
                                         selected.Modulate = color;
                                     }
                                 }
-                                dragStartPos = dragEndPos;
+                                if (selection.Count == 0)
+                                    EmitSignal(nameof(NothingSelected));
+                                isDragging = false;
+                                isDraggingNode = false;
+                                dragStartPos = dragEndPos;  // Set them equal so the selection box vanishes
                                 Update();
                             }
                         }
@@ -960,18 +980,13 @@ namespace Fractural.Flowchart
         }
 
         /// <summary>
-        /// Clears all nodes and connections
+        /// Clears all nodes and connections, and resets the debug tween
         /// </summary>
         /// <param name="layer"></param>
         public virtual void ClearGraph(FlowchartLayer layer = null)
         {
             if (layer == null) layer = CurrentLayer;
-            ClearConnections();
-            foreach (Control child in layer.ContentNodes.GetChildren())
-            {
-                layer.ContentNodes.RemoveChild(child);
-                child.QueueFree();
-            }
+            layer.ClearGraph();
         }
 
         /// <summary>

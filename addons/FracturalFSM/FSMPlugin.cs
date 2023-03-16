@@ -58,7 +58,7 @@ namespace Fractural.StateMachine
             stateMachineEditor = stateMachineEditorPrefab.Instance<StateMachineEditor>();
             stateMachineEditor.Connect(nameof(StateMachineEditor.InspectorChanged), this, nameof(OnInspectorChanged));
             stateMachineEditor.Connect(nameof(StateMachineEditor.NodeSelected), this, nameof(OnStateMachineEditorNodeSelected));
-            stateMachineEditor.Connect(nameof(StateMachineEditor.NodeDeselected), this, nameof(OnStateMachineEditorNodeDeselected));
+            stateMachineEditor.Connect(nameof(StateMachineEditor.NothingSelected), this, nameof(OnStateMachineEditorNothingSelected));
             //stateMachineEditor.Connect(nameof(StateMachineEditor.DebugModeChanged), this, nameof(OnStateMachineEditorDebugModeChanged));
             stateMachineEditor.Construct(GetUndoRedo());
 
@@ -145,16 +145,14 @@ namespace Fractural.StateMachine
                 // Must be shown first, otherwise StateMachineEditor can't execute ui action as it is !added to scene tree
                 ShowStateMachineEditor();
                 if (FocusedObject is StateMachinePlayer focusedStateMachinePlayer)
-                    stateMachineEditor.Load(focusedStateMachinePlayer);
+                    stateMachineEditor.TryLoad(focusedStateMachinePlayer);
                 else if (FocusedObject is StateMachine focusedStateMachine)
-                    stateMachineEditor.Load(focusedStateMachine);
+                    stateMachineEditor.TryLoad(focusedStateMachine);
                 else if (FocusedObject is InspectorRemoteStateMachinePlayer remotePlayer)
-                    stateMachineEditor.Load(remotePlayer);
+                    stateMachineEditor.TryLoad(remotePlayer);
             }
             else
-            {
                 HideStateMachineEditor();
-            }
         }
 
         private void OnInspectorChanged(string property)
@@ -178,20 +176,11 @@ namespace Fractural.StateMachine
             GetEditorInterface().InspectObject(objectToInspect);
         }
 
-        private void OnStateMachineEditorNodeDeselected(Control node)
+        private void OnStateMachineEditorNothingSelected()
         {
             // We're not looking at a state or line node, so we go back to inspecting the state machine
-            GetEditorInterface().InspectObject(stateMachineEditor.StateMachine);
+            GetEditorInterface().InspectObject(FocusedObject);
         }
-
-        //private void OnStateMachineEditorDebugModeChanged(bool newDebugMode)
-        //{
-        //    if (!newDebugMode)
-        //    {
-        //        FocusedObject = null;
-        //        HideStateMachineEditor();
-        //    }
-        //}
         #endregion
     }
 }

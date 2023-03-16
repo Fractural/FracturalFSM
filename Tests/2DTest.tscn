@@ -19,7 +19,7 @@ Name = "Entry"
 [sub_resource type="Resource" id=42]
 script = ExtResource( 8 )
 __meta__ = {
-"graph_offset": Vector2( 628, 220 )
+"graph_offset": Vector2( 588, 380 )
 }
 Name = "Fall"
 
@@ -33,14 +33,14 @@ Name = "Idle"
 [sub_resource type="Resource" id=50]
 script = ExtResource( 8 )
 __meta__ = {
-"graph_offset": Vector2( 908, 60 )
+"graph_offset": Vector2( 968, 120 )
 }
 Name = "Jump"
 
 [sub_resource type="Resource" id=41]
 script = ExtResource( 8 )
 __meta__ = {
-"graph_offset": Vector2( 824, 200 )
+"graph_offset": Vector2( 904, 300 )
 }
 Name = "Jump(n)"
 

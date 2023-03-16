@@ -14,9 +14,15 @@ namespace Fractural.StateMachine
     [Tool]
     public partial class StateMachineEditor : Flowchart.Flowchart
     {
-        [Signal] public delegate void InspectorChanged(string property);// Inform plugin to refresh inspector
-
-        #region Properties/Fields
+        /// <summary>
+        /// Emitted to inform plugin to refresh inspector
+        /// </summary>
+        /// <param name="property"></param>
+        [Signal] public delegate void InspectorChanged(string property);
+        /// <summary>
+        /// Emitted when the user selects the background without selecting any nodes
+        /// </summary>
+        [Signal] public delegate void BackgroundSelected();
 
         #region MessageBox
         public class MessageBoxMessage
@@ -145,49 +151,64 @@ namespace Fractural.StateMachine
             => base.GetLayer(nodePath) as StateMachineEditorLayer;
         #endregion
 
-        #endregion
 
-        #region Methods
+
+
 
         #region Loading StateMachines, StateMachinePlayer, or RemoteStateMachinePlayers
         /// <summary>
-        /// Load in a StateMachine for editing
+        /// Load in a StateMachine for editing. Returns true if successfully loaded.
         /// </summary>
         /// <param name="stateMachine"></param>
-        public void Load(StateMachine stateMachine)
+        /// <returns></returns>
+        public bool TryLoad(StateMachine stateMachine)
         {
+            // Don't reload if we're already loaded. Otherwise this can cause weird bugs with
+            // node selection, since mid way through processing the _GuiInput the entire editor gets refreshed.
+            if (!DebugMode && StateMachinePlayer == null && StateMachine == stateMachine && RemoteStateMachinePlayer == null) return false;
             if (!IsUnloaded) Unload();
             ConfigureDebugMode(false);
             ConfigureNewStateMachinePlayer(null);
             ConfigureNewStateMachine(stateMachine);
             RemoteStateMachinePlayer = null;
+            return true;
         }
 
         /// <summary>
-        /// Load in a StateMachinePlayer for editing
+        /// Load in a StateMachinePlayer for editing. Returns true if successfully loaded.
         /// </summary>
-        /// <param name="stateMachine"></param>
-        public void Load(StateMachinePlayer player)
+        /// <param name="player"></param>
+        /// <returns></returns>
+        public bool TryLoad(StateMachinePlayer player)
         {
+            // Don't reload if we're already loaded. Otherwise this can cause weird bugs with
+            // node selection, since mid way through processing the _GuiInput the entire editor gets refreshed.
+            if (!DebugMode && StateMachinePlayer == player && StateMachine == null && RemoteStateMachinePlayer == null) return false;
             if (!IsUnloaded) Unload();
             ConfigureDebugMode(false);
             ConfigureNewStateMachinePlayer(player);
             ConfigureNewStateMachine(player.StateMachine);
             RemoteStateMachinePlayer = null;
+            return true;
         }
 
         /// <summary>
-        /// Load in a InspectorRemoteStateMachinePlayer for debug viewing
+        /// Load in a InspectorRemoteStateMachinePlayer for debug viewing. Returns true if successfully loaded.
         /// </summary>
-        /// <param name="stateMachine"></param>
-        public void Load(InspectorRemoteStateMachinePlayer remotePlayer)
+        /// <param name="remotePlayer"></param>
+        /// <returns></returns>
+        public bool TryLoad(InspectorRemoteStateMachinePlayer remotePlayer)
         {
+            // Don't reload if we're already loaded. Otherwise this can cause weird bugs with
+            // node selection, since mid way through processing the _GuiInput the entire editor gets refreshed.
+            if (DebugMode && StateMachinePlayer == null && StateMachine == null && RemoteStateMachinePlayer == remotePlayer) return false;
             if (!IsUnloaded) Unload();
             // Turn on debugging mode
             ConfigureDebugMode(true);
             ConfigureNewStateMachinePlayer(null);
             ConfigureNewStateMachine(remotePlayer.StateMachine);
             RemoteStateMachinePlayer = remotePlayer;
+            return true;
         }
 
         public bool IsUnloaded => StateMachine == null && StateMachinePlayer == null && RemoteStateMachinePlayer == null;
@@ -202,11 +223,17 @@ namespace Fractural.StateMachine
             ConfigureNewStateMachine(null);
             ConfigureNewStateMachinePlayer(null);
             RemoteStateMachinePlayer = null;
-            ClearNonRootLayers();
+            ResetLayersBackToRoot();
             currentDebugState = "";
+            currentConnection = null;
+            isConnecting = false;
+            isDragging = false;
+            isDraggingNode = false;
+            dragStartPos = Vector2.Zero;
+            dragEndPos = Vector2.Zero;
         }
 
-        public void ClearNonRootLayers()
+        public void ResetLayersBackToRoot()
         {
             var rootLayer = GetLayer("root");
             SelectLayer(rootLayer);
@@ -1271,8 +1298,6 @@ namespace Fractural.StateMachine
                 OnRemoteTransited(from, to);
             }
         }
-        #endregion
-
         #endregion
     }
 }

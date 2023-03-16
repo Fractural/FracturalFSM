@@ -160,24 +160,22 @@ namespace Fractural.Flowchart
                 ContentNodes.RemoveChild(node);
         }
 
-        // TODO: Find a way to refactor out the call to AfterConnectNode
-        //       from Flowchart since this method seems like it should be private.
         /// <summary>
-        /// Called after connection established
+        /// Adds connection's Line to the layer. This does NOT add the connection to the Connections dictionary.
         /// </summary>
         /// <param name="connection"></param>
-        public void AfterConnectNode(Connection connection)
+        public void AddConnectionLine(Connection connection)
         {
             ContentLines.AddChild(connection.Line);
             connection.Join();
         }
 
         /// <summary>
-        /// Called after connection broken
+        /// Removes connection's Line from the layer. This does NOT remove the connection from Connections dictionary.
         /// </summary>
         /// <param name="connection"></param>
         /// <returns></returns>
-        private FlowchartLine AfterDisconnectNode(Connection connection)
+        public FlowchartLine RemoveConnectionLine(Connection connection)
         {
             ContentLines.RemoveChild(connection.Line);
             return connection.Line;
@@ -237,7 +235,7 @@ namespace Fractural.Flowchart
                 Connections[from] = connectionsFrom;
             }
             connectionsFrom[to] = connection;
-            AfterConnectNode(connection);
+            AddConnectionLine(connection);
 
             // Check if connection in both ways
             connectionsFrom = Connections.Get<GDC.Dictionary>(to);
@@ -267,7 +265,7 @@ namespace Fractural.Flowchart
             if (connection == null)
                 return null;
 
-            AfterDisconnectNode(connection);
+            RemoveConnectionLine(connection);
             if (connectionsFrom.Count == 1)
                 Connections.Remove(from);
             else
@@ -287,9 +285,22 @@ namespace Fractural.Flowchart
         }
 
         /// <summary>
+        /// Clears all connections and nodes and resets the tween
+        /// </summary>
+        public virtual void ClearGraph()
+        {
+            ClearConnections();
+            foreach (Control child in ContentNodes.GetChildren())
+            {
+                ContentNodes.RemoveChild(child);
+                child.QueueFree();
+            }
+        }
+
+        /// <summary>
         /// Clear all selection
         /// </summary>
-        public void ClearConnections()
+        public virtual void ClearConnections()
         {
             foreach (GDC.Dictionary connectionsFrom in Connections.Values)
                 foreach (Connection connection in connectionsFrom.Values)
@@ -305,7 +316,7 @@ namespace Fractural.Flowchart
         /// Return GDC.Array of GDC.Dictionary of connection as such [new GDC.Dictionary(){{"from1", "to1"}}, new GDC.Dictionary(){{"from2", "to2"}}]
         /// </summary>
         /// <returns></returns>
-        public IReadOnlyList<ConnectionPair> GetConnectionList()
+        public virtual IReadOnlyList<ConnectionPair> GetConnectionList()
         {
             List<ConnectionPair> connectionList = new List<ConnectionPair>();
             foreach (GDC.Dictionary connectionsFrom in Connections.Values)
