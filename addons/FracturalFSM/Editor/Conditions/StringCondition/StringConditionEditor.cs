@@ -11,7 +11,7 @@ namespace Fractural.StateMachine
         [OnReadyGet("MarginContainer/StringValue")]
         public LineEdit stringValue;
 
-        protected override string TypeEditorIcon => "String";
+        protected override string ConditionPrefixEditorIcon => "String";
         private string oldValue = "";
 
         [OnReady]

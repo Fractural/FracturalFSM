@@ -162,6 +162,19 @@ Conditions = {
 }
 priority = 0
 
+[sub_resource type="Resource" id=51]
+script = ExtResource( 10 )
+Name = "space"
+
+[sub_resource type="Resource" id=42]
+script = ExtResource( 1 )
+From = "Walk"
+To = "Jump"
+Conditions = {
+"space": SubResource( 51 )
+}
+priority = 0
+
 [sub_resource type="Resource" id=52]
 script = ExtResource( 2 )
 Name = "walk"
@@ -174,19 +187,6 @@ From = "Walk"
 To = "Idle"
 Conditions = {
 "walk": SubResource( 52 )
-}
-priority = 0
-
-[sub_resource type="Resource" id=51]
-script = ExtResource( 10 )
-Name = "space"
-
-[sub_resource type="Resource" id=42]
-script = ExtResource( 1 )
-From = "Walk"
-To = "Jump"
-Conditions = {
-"space": SubResource( 51 )
 }
 priority = 0
 

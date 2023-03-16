@@ -11,7 +11,7 @@ namespace Fractural.StateMachine
         [OnReadyGet("MarginContainer/FloatValue")]
         private LineEdit floatValue;
 
-        protected override string TypeEditorIcon => "float";
+        protected override string ConditionPrefixEditorIcon => "float";
         private float oldValue = 0f;
 
         [OnReady]

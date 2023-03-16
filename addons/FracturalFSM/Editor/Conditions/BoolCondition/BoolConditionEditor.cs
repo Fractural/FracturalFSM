@@ -13,7 +13,7 @@ namespace Fractural.StateMachine
         [OnReadyGet("MarginContainer/BooleanValue")]
         private CheckButton booleanValue;
 
-        protected override string TypeEditorIcon => "bool";
+        protected override string ConditionPrefixEditorIcon => "bool";
 
         [OnReady]
         public new void RealReady()

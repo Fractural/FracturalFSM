@@ -13,7 +13,7 @@ namespace Fractural.StateMachine
         [OnReadyGet("MarginContainer/IntegerValue")]
         private LineEdit integerValue;
 
-        protected override string TypeEditorIcon => "int";
+        protected override string ConditionPrefixEditorIcon => "int";
         private int oldValue = 0;
 
         [OnReady]

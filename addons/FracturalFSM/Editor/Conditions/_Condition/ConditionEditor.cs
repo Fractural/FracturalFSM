@@ -14,8 +14,11 @@ namespace Fractural.StateMachine
         protected LineEdit nameEdit;
         [OnReadyGet("Remove")]
         protected Button remove;
+        [OnReadyGet("Icon")]
+        protected TextureRect icon;
 
         protected UndoRedo undoRedo;
+        protected virtual string ConditionPrefixEditorIcon => "";
 
         private Condition condition;
         public Condition Condition => condition;
@@ -37,6 +40,8 @@ namespace Fractural.StateMachine
             nameEdit.Connect("focus_exited", this, nameof(OnNameEditFocusExited));
             nameEdit.Connect("text_changed", this, nameof(OnNameEditTextChanged));
             remove.Connect("pressed", this, nameof(OnEditorRemoved));
+            if (ConditionPrefixEditorIcon != "")
+                icon.Texture = GetIcon(ConditionPrefixEditorIcon, "EditorIcons");
             SetProcessInput(false);
         }
 
