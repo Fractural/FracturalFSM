@@ -13,7 +13,7 @@ namespace Fractural.StateMachine
         private Resource[] conditionProcessors;
 
         [OnReadyGet("HeaderContainer/Header")]
-        private HBoxContainer header;
+        private HFlowContainer header;
         [OnReadyGet("HeaderContainer/Header/Title")]
         private HBoxContainer title;
         [OnReadyGet("HeaderContainer/Header/Title/Icon")]

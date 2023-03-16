@@ -5,7 +5,7 @@ using System.Diagnostics;
 namespace Fractural.StateMachine
 {
     [Tool]
-    public partial class ConditionEditor : HBoxContainer
+    public partial class ConditionEditor : HFlowContainer
     {
         [Signal] public delegate void NewNameEntered(string newName);
         [Signal] public delegate void Removed();

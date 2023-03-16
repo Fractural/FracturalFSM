@@ -12,7 +12,7 @@
 [sub_resource type="Resource" id=2]
 script = ExtResource( 8 )
 __meta__ = {
-"graph_offset": Vector2( 388, 40 )
+"graph_offset": Vector2( 308, 100 )
 }
 Name = "Entry"
 
@@ -22,13 +22,6 @@ __meta__ = {
 "graph_offset": Vector2( 588, 380 )
 }
 Name = "Fall"
-
-[sub_resource type="Resource" id=40]
-script = ExtResource( 8 )
-__meta__ = {
-"graph_offset": Vector2( 708, 60 )
-}
-Name = "Idle"
 
 [sub_resource type="Resource" id=50]
 script = ExtResource( 8 )
@@ -40,9 +33,16 @@ Name = "Jump"
 [sub_resource type="Resource" id=41]
 script = ExtResource( 8 )
 __meta__ = {
-"graph_offset": Vector2( 904, 300 )
+"graph_offset": Vector2( 904, 360 )
 }
 Name = "Jump(n)"
+
+[sub_resource type="Resource" id=51]
+script = ExtResource( 8 )
+__meta__ = {
+"graph_offset": Vector2( 588, 120 )
+}
+Name = "Idle"
 
 [sub_resource type="Resource" id=5]
 script = ExtResource( 1 )
@@ -107,7 +107,7 @@ Name = ""
 States = {
 "Entry": SubResource( 2 ),
 "Fall": SubResource( 42 ),
-"Idle": SubResource( 40 ),
+"Idle": SubResource( 51 ),
 "Jump": SubResource( 50 ),
 "Jump(n)": SubResource( 41 )
 }
