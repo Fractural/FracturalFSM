@@ -11,6 +11,8 @@ namespace Fractural.StateMachine
     {
         public StateMachineEditor stateMachineEditor;
         public TransitionInspector transitionInspector;
+        public StateStackPlayerInspector stateStackPlayerInspector;
+        public StateMachinePlayerInspector stateMachinePlayerInspector;
         public StateInspector stateInspector;
 
         private Godot.Object focusedObject = null;
@@ -48,7 +50,7 @@ namespace Fractural.StateMachine
             Texture stateMachinePlayerIcon = GD.Load<Texture>("res://addons/FracturalFSM/Assets/Icons/state_machine_player_icon.png");
             Texture stateMachineIcon = GD.Load<Texture>("res://addons/FracturalFSM/Assets/Icons/state_machine_icon.png");
 
-            AddManagedCustomType(nameof(StackPlayer), nameof(Node), GD.Load<CSharpScript>("res://addons/FracturalFSM/CustomTypes/StackPlayer.cs"), stackPlayerIcon);
+            AddManagedCustomType(nameof(StateStackPlayer), nameof(Node), GD.Load<CSharpScript>("res://addons/FracturalFSM/CustomTypes/StateStackPlayer.cs"), stackPlayerIcon);
             AddManagedCustomType(nameof(StateMachinePlayer), nameof(Node), GD.Load<CSharpScript>("res://addons/FracturalFSM/CustomTypes/StateMachinePlayer.cs"), stateMachinePlayerIcon);
             AddManagedCustomType(nameof(StateMachine), nameof(Resource), GD.Load<CSharpScript>("res://addons/FracturalFSM/CustomTypes/StateMachine.cs"), stateMachineIcon);
 
@@ -57,7 +59,8 @@ namespace Fractural.StateMachine
             stateMachineEditor.Connect(nameof(StateMachineEditor.InspectorChanged), this, nameof(OnInspectorChanged));
             stateMachineEditor.Connect(nameof(StateMachineEditor.NodeSelected), this, nameof(OnStateMachineEditorNodeSelected));
             stateMachineEditor.Connect(nameof(StateMachineEditor.NodeDeselected), this, nameof(OnStateMachineEditorNodeDeselected));
-            stateMachineEditor.Connect(nameof(StateMachineEditor.DebugModeChanged), this, nameof(OnStateMachineEditorDebugModeChanged));
+            //stateMachineEditor.Connect(nameof(StateMachineEditor.DebugModeChanged), this, nameof(OnStateMachineEditorDebugModeChanged));
+            stateMachineEditor.Construct(GetUndoRedo());
 
             transitionInspector = new TransitionInspector(
                 GetUndoRedo(),
@@ -65,9 +68,13 @@ namespace Fractural.StateMachine
                 GD.Load<PackedScene>("res://addons/FracturalFSM/Editor/Transition/TransitionEditor.tscn")
             );
             stateInspector = new StateInspector();
+            stateStackPlayerInspector = new StateStackPlayerInspector();
+            stateMachinePlayerInspector = new StateMachinePlayerInspector();
 
             AddManagedInspectorPlugin(transitionInspector);
             AddManagedInspectorPlugin(stateInspector);
+            AddManagedInspectorPlugin(stateStackPlayerInspector);
+            AddManagedInspectorPlugin(stateMachinePlayerInspector);
         }
 
         protected override void Unload()
@@ -82,14 +89,11 @@ namespace Fractural.StateMachine
             if (@object is StateMachine)
                 return true;
 
-            if (@object is StateMachinePlayer)
+            if (GDUtils.IsRemoteInspectedObject<StateMachinePlayer>(@object))
             {
-                if (@object.GetClass() == "ScriptEditorDebuggerInspectedObject")
-                {
-                    FocusedObject = @object;
-                    stateMachineEditor.DebugMode = true;
-                    return false;
-                }
+                // We want to focus on the remote object for debugging purposes
+                FocusedObject = @object.AsWrapper<InspectorRemoteStateMachinePlayer>();
+                return false;
             }
             return false;
         }
@@ -113,7 +117,7 @@ namespace Fractural.StateMachine
         {
             if (stateMachineEditor.IsInsideTree())
             {
-                stateMachineEditor.StateMachine = null;
+                stateMachineEditor.Unload();
                 RemoveControlFromBottomPanel(stateMachineEditor);
             }
         }
@@ -140,24 +144,17 @@ namespace Fractural.StateMachine
             {
                 // Must be shown first, otherwise StateMachineEditor can't execute ui action as it is !added to scene tree
                 ShowStateMachineEditor();
-                StateMachine stateMachine = null;
                 if (FocusedObject is StateMachinePlayer focusedStateMachinePlayer)
-                {
-                    if (GDUtils.IsRemoteInspectedObject(FocusedObject))
-                        stateMachine = FocusedObject.GetRemote<StateMachine>(nameof(StateMachinePlayer.StateMachine));
-                    else
-                        stateMachine = focusedStateMachinePlayer.StateMachine;
-                    stateMachineEditor.StateMachinePlayer = focusedStateMachinePlayer;
-                }
+                    stateMachineEditor.Load(focusedStateMachinePlayer);
                 else if (FocusedObject is StateMachine focusedStateMachine)
-                {
-                    stateMachine = focusedStateMachine;
-                    stateMachineEditor.StateMachinePlayer = null;
-                }
-                stateMachineEditor.StateMachine = stateMachine;
+                    stateMachineEditor.Load(focusedStateMachine);
+                else if (FocusedObject is InspectorRemoteStateMachinePlayer remotePlayer)
+                    stateMachineEditor.Load(remotePlayer);
             }
             else
+            {
                 HideStateMachineEditor();
+            }
         }
 
         private void OnInspectorChanged(string property)
@@ -183,19 +180,18 @@ namespace Fractural.StateMachine
 
         private void OnStateMachineEditorNodeDeselected(Control node)
         {
+            // We're not looking at a state or line node, so we go back to inspecting the state machine
             GetEditorInterface().InspectObject(stateMachineEditor.StateMachine);
         }
 
-        private void OnStateMachineEditorDebugModeChanged(bool newDebugMode)
-        {
-            if (!newDebugMode)
-            {
-                stateMachineEditor.DebugMode = false;
-                stateMachineEditor.StateMachinePlayer = null;
-                FocusedObject = null;
-                HideStateMachineEditor();
-            }
-        }
+        //private void OnStateMachineEditorDebugModeChanged(bool newDebugMode)
+        //{
+        //    if (!newDebugMode)
+        //    {
+        //        FocusedObject = null;
+        //        HideStateMachineEditor();
+        //    }
+        //}
         #endregion
     }
 }

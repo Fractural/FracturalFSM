@@ -27,7 +27,16 @@ namespace Fractural.StateMachine
         public override void _Ready()
         {
             base._Ready();
+            GD.Print("Readied layer, ", GetPath());
             tween.Start();
+        }
+
+        public override void _Notification(int what)
+        {
+            if (what == NotificationPredelete)
+            {
+                GD.Print("Deleting layer, ", GetPath());
+            }
         }
 
         public void Construct(Color editorAccentColor)

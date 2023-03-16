@@ -802,6 +802,15 @@ namespace Fractural.Flowchart
         #endregion
 
         #region Public API
+        /// <summary>
+        /// Clears all layers and content from the Flowchart.
+        /// </summary>
+        public void ClearContent()
+        {
+            foreach (Node child in content.GetChildren())
+                child.QueueFree();
+        }
+
         public void UpdateConnectionLines(string nodeName)
         {
             foreach (string from in CurrentLayer.Connections.Keys)
@@ -991,9 +1000,9 @@ namespace Fractural.Flowchart
             {
                 if (node == null)
                     continue;
-
                 Deselect(node);
             }
+            dragOrigins.Clear();
             selection.Clear();
         }
 

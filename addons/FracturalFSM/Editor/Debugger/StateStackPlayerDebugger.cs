@@ -8,19 +8,19 @@ using Fractural.GodotCodeGenerator.Attributes;
 namespace Fractural.StateMachine
 {
     [Tool]
-    public partial class StackPlayerDebugger : Control
+    public partial class StateStackPlayerDebugger : Control
     {
         [Export]
         private PackedScene stackItem;
 
         [OnReadyGet("MarginContainer/Stack")]
         public VBoxContainer Stack;
-        public StackPlayer ParentStackPlayer => GetParent() as StackPlayer;
+        public StateStackPlayer ParentStackPlayer => GetParent() as StateStackPlayer;
 
 
         public override string _GetConfigurationWarning()
         {
-            if (!(GetParent() is StackPlayer))
+            if (!(GetParent() is StateStackPlayer))
             {
                 return "Debugger must be child of StackPlayer";
             }
@@ -35,8 +35,8 @@ namespace Fractural.StateMachine
                 return;
 
             }
-            ParentStackPlayer.Connect(nameof(StackPlayer.Pushed), this, nameof(OnStackPlayerPushed));
-            ParentStackPlayer.Connect(nameof(StackPlayer.Popped), this, nameof(OnStackPlayerPopped));
+            ParentStackPlayer.Connect(nameof(StateStackPlayer.Pushed), this, nameof(OnStackPlayerPushed));
+            ParentStackPlayer.Connect(nameof(StateStackPlayer.Popped), this, nameof(OnStackPlayerPopped));
             SyncStack();
 
         }

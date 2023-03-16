@@ -114,9 +114,7 @@ namespace Fractural.StateMachine
                     if (nextState != null)
                         // Construct next state into absolute path
                         nextState = JoinPath(endStateMachineParentPath, nextState);
-
                     return nextState;
-
                 }
             }
             // Transit with current running nested state machine
@@ -306,7 +304,7 @@ namespace Fractural.StateMachine
 
         private string JoinPath(params string[] dirs)
         {
-            return string.Join("/", dirs);
+            return string.Join("/", dirs.Where(x => x != ""));
         }
 
         /// <summary>

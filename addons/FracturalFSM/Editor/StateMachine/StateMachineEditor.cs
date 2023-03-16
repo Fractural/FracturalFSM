@@ -6,14 +6,17 @@ using Fractural.GodotCodeGenerator.Attributes;
 using Fractural.Utils;
 using System.Collections.Generic;
 using Fractural.Flowchart;
+using System.Linq;
 
 namespace Fractural.StateMachine
 {
+    // TODO: Refactor out messaging from the editor
     [Tool]
     public partial class StateMachineEditor : Flowchart.Flowchart
     {
         [Signal] public delegate void InspectorChanged(string property);// Inform plugin to refresh inspector
-        [Signal] public delegate void DebugModeChanged(bool newDebugMode);
+
+        #region Properties/Fields
 
         #region MessageBox
         public class MessageBoxMessage
@@ -28,7 +31,6 @@ namespace Fractural.StateMachine
             public string Text { get; set; }
         }
 
-        // TODO: Refactor the messaging system to be better
         public static readonly MessageBoxMessage EntryStateMissingMsg = new MessageBoxMessage(
             "entry_state_missing",
             "Entry State missing, it will never get started. Right-click -> \"Add Entry\"."
@@ -109,49 +111,12 @@ namespace Fractural.StateMachine
         #endregion
 
         #region Public properties
-        private bool debugMode = false;
-        public bool DebugMode
-        {
-            get => debugMode;
-            set
-            {
-                if (debugMode != value)
-                {
-                    debugMode = value;
-                    OnDebugModeChanged(value);
-                    EmitSignal(nameof(DebugModeChanged), debugMode);
-
-                }
-            }
-        }
-        private StateMachinePlayer stateMachinePlayer;
-        public StateMachinePlayer StateMachinePlayer
-        {
-            get => stateMachinePlayer;
-            set
-            {
-                if (stateMachinePlayer != value)
-                {
-                    stateMachinePlayer = value;
-                    OnStateMachinePlayerChanged(value);
-                }
-            }
-        }
-        private StateMachine stateMachine;
-        public StateMachine StateMachine
-        {
-            get => stateMachine;
-            set
-            {
-                if (stateMachine != value)
-                {
-                    stateMachine = value;
-                    OnStateMachineChanged(value);
-                }
-            }
-        }
-        public bool CanGuiNameEdit { get; set; } = true;
-        public bool CanGuiContextMenu { get; set; } = true;
+        public bool DebugMode { get; private set; }
+        public StateMachinePlayer StateMachinePlayer { get; private set; }
+        public InspectorRemoteStateMachinePlayer RemoteStateMachinePlayer { get; private set; }
+        public StateMachine StateMachine { get; private set; }
+        public bool CanGuiNameEdit { get; private set; } = true;
+        public bool CanGuiContextMenu { get; private set; } = true;
         #endregion
 
         #region Private fields
@@ -159,7 +124,7 @@ namespace Fractural.StateMachine
         private int previousIndex = 0;
         private string previousPath = "";
         private StateNode contextNode;
-        private string currentState = "";
+        private string currentDebugState = "";
         private IList<string> lastStack = new List<string>();
         #endregion
 
@@ -180,11 +145,87 @@ namespace Fractural.StateMachine
             => base.GetLayer(nodePath) as StateMachineEditorLayer;
         #endregion
 
+        #endregion
+
+        #region Methods
+
+        #region Loading StateMachines, StateMachinePlayer, or RemoteStateMachinePlayers
+        /// <summary>
+        /// Load in a StateMachine for editing
+        /// </summary>
+        /// <param name="stateMachine"></param>
+        public void Load(StateMachine stateMachine)
+        {
+            if (!IsUnloaded) Unload();
+            ConfigureDebugMode(false);
+            ConfigureNewStateMachine(stateMachine);
+            ConfigureNewStateMachinePlayer(null);
+            RemoteStateMachinePlayer = null;
+        }
+
+        /// <summary>
+        /// Load in a StateMachinePlayer for editing
+        /// </summary>
+        /// <param name="stateMachine"></param>
+        public void Load(StateMachinePlayer player)
+        {
+            if (!IsUnloaded) Unload();
+            ConfigureDebugMode(false);
+            ConfigureNewStateMachine(player.StateMachine);
+            ConfigureNewStateMachinePlayer(player);
+            RemoteStateMachinePlayer = null;
+        }
+
+        /// <summary>
+        /// Load in a InspectorRemoteStateMachinePlayer for debug viewing
+        /// </summary>
+        /// <param name="stateMachine"></param>
+        public void Load(InspectorRemoteStateMachinePlayer remotePlayer)
+        {
+            if (!IsUnloaded) Unload();
+            // Turn on debugging mode
+            ConfigureDebugMode(true);
+            ConfigureNewStateMachine(remotePlayer.StateMachine);
+            ConfigureNewStateMachinePlayer(null);
+            RemoteStateMachinePlayer = remotePlayer;
+        }
+
+        public bool IsUnloaded => StateMachine == null && StateMachinePlayer == null && RemoteStateMachinePlayer == null;
+
+        /// <summary>
+        /// Unload whatever's currently loaded (ie. state machine, state machine player, or remote state machine)
+        /// </summary>
+        public void Unload()
+        {
+            ClearSelection();
+            ConfigureDebugMode(false);
+            ConfigureNewStateMachine(null);
+            ConfigureNewStateMachinePlayer(null);
+            RemoteStateMachinePlayer = null;
+            ClearNonRootLayers();
+        }
+
+        public void ClearNonRootLayers()
+        {
+            var rootLayer = GetLayer("root");
+            SelectLayer(rootLayer);
+            ClearGraph(rootLayer);
+            foreach (Node child in rootLayer.ContentNodes.GetChildren())
+                if (child is FlowchartLayer)
+                    child.QueueFree();
+        }
+
+        /// <summary>
+        /// Called once to initialize the StateMachineEditor
+        /// </summary>
+        /// <param name="undoRedo"></param>
         public void Construct(UndoRedo undoRedo)
         {
             this.undoRedo = undoRedo;
         }
+        #endregion
 
+        #region Godot Lifecycle Methods
         [OnReady]
         public void RealReady()
         {
@@ -210,8 +251,8 @@ namespace Fractural.StateMachine
             messageBox.GrowVertical = GrowDirection.Begin;
             AddChild(messageBox);
 
-            content.GetChild(0).Name = "root";
-
+            // Name first layer root.
+            GetLayerAt(0).Name = "root";
             SetProcess(false);
 
             createNewStateMachineContainer.Visible = false;
@@ -253,90 +294,51 @@ namespace Fractural.StateMachine
             ClearSelection();
         }
 
-        public override void _Process(float delta)
+        public override void _GuiInput(InputEvent inputEvent)
         {
-            // Process is only used by the debug
-            if (!DebugMode)
+            base._GuiInput(inputEvent);
+            if (inputEvent is InputEventMouseButton mouseButtonEvent)
             {
-                SetProcess(false);
-                return;
-            }
-            if (!IsInstanceValid(stateMachinePlayer))
-            {
-                SetProcess(false);
-                DebugMode = false;
-                return;
-            }
-            var stack = stateMachinePlayer.Stack;
-            if (stack.Count > 0)
-            {
-                SetProcess(false);
-                DebugMode = false;
-                return;
-
-            }
-            if (stack.Count == 1)
-            {
-                SetCurrentState(stateMachinePlayer.Current);
-            }
-            else
-            {
-                var stackMaxIndex = stack.Count - 1;
-                var prevIndex = stack.IndexOf(currentState);
-                if (prevIndex == -1)
+                switch (mouseButtonEvent.ButtonIndex)
                 {
-                    if (lastStack.Count < stack.Count)
-                    {
-                        // Reproduce transition, for example:
-                        // [Entry, Idle, Walk]
-                        // [Entry, Idle, Jump, Fall]
-                        // Walk -> Idle
-                        // Idle -> Jump
-                        // Jump -> Fall
-                        int commonIndex = -1;
-                        for (int i = 0; i < lastStack.Count; i++)
+                    case (int)ButtonList.Right:
+                        if (mouseButtonEvent.Pressed && CanGuiContextMenu)
                         {
-                            if (lastStack[i] == stack[i])
-                            {
-                                commonIndex = i;
-                                break;
-                            }
+                            contextMenu.SetItemDisabled(1, CurrentLayer.StateMachine.HasEntry);
+                            contextMenu.SetItemDisabled(2, CurrentLayer.StateMachine.HasExit);
+                            contextMenu.RectPosition = GetViewport().GetMousePosition();
+                            contextMenu.Popup_();
                         }
-                        if (commonIndex > -1)
-                        {
-                            var countFromLastStack = lastStack.Count - 1 - commonIndex - 1;
-                            lastStack.Reverse();
-                            // Transit back to common state
-                            for (int i = 0; i < countFromLastStack; i++)
-                                SetCurrentState(lastStack[i + 1]);
-
-                            // Transit to all missing state in current stack
-                            for (int i = commonIndex + 1; i < stack.Count; i++)
-                                SetCurrentState(stack[i]);
-                        }
-                        else
-                            SetCurrentState(stack.PeekBack());
-                    }
-                    else
-                        SetCurrentState(stack.PeekBack());
-                }
-                else
-                {
-                    // Set every skipped state
-                    var missingCount = stackMaxIndex - prevIndex;
-                    foreach (var i in GD.Range(1, missingCount + 1))
-                    {
-                        SetCurrentState(stack[prevIndex + i]);
-                    }
+                        break;
                 }
             }
-            lastStack = new List<string>(stack);
-            var globalParams = stateMachinePlayer.GetRemote<GDC.Dictionary>(nameof(StateMachinePlayer.Parameters));
-            var localParams = stateMachinePlayer.GetRemote<GDC.Dictionary>(nameof(StateMachinePlayer.LocalParamters));
-            paramPanel.UpdateParams(globalParams, localParams);
-            GetFocusedLayer(currentState).DebugUpdate(currentState, globalParams, localParams);
         }
 
+        public override void _Input(InputEvent inputEvent)
+        {
+            base._Input(inputEvent);
+            // Intercept save action
+            if (Visible && inputEvent is InputEventKey keyEvent)
+            {
+                switch (keyEvent.Scancode)
+                {
+                    case (int)ButtonList.Right:
+                        if (keyEvent.Control && keyEvent.Pressed)
+                            SaveRequest();
+                        break;
+                }
+            }
+        }
+
+
+        // Process is only used by the debug
+        public override void _Process(float delta)
+        {
+            DebugProcess();
+        }
+        #endregion
+
+        #region Signal Wiring
         private void OnPathViewerDirPressed(string dir, int index)
         {
             var path = pathViewer.SelectDir(dir);
@@ -440,7 +442,7 @@ namespace Fractural.StateMachine
         private void OnCreateNewStateMachinePressed()
         {
             var newStateMachine = CSharpScript<StateMachine>.New();
-            stateMachinePlayer.StateMachine = newStateMachine;
+            StateMachinePlayer.StateMachine = newStateMachine;
             StateMachine = newStateMachine;
             createNewStateMachineContainer.Visible = false;
             CheckHasEntry();
@@ -453,9 +455,10 @@ namespace Fractural.StateMachine
                 line.ConditionVisibility = conditionVisibility.Pressed;
         }
 
-        private void OnDebugModeChanged(bool newDebugMode)
+        private void ConfigureDebugMode(bool debugMode)
         {
-            if (newDebugMode)
+            DebugMode = debugMode;
+            if (debugMode)
             {
                 paramPanel.Show();
                 AddMessage(DebugModeMsg);
@@ -478,18 +481,12 @@ namespace Fractural.StateMachine
                 CanGuiConnectNode = true;
                 CanGuiNameEdit = true;
                 CanGuiContextMenu = true;
-
             }
         }
 
-        private void OnStateMachinePlayerChanged(StateMachinePlayer newStateMachinePlayer)
+        private void ConfigureNewStateMachinePlayer(StateMachinePlayer newStateMachinePlayer)
         {
-            if (StateMachinePlayer == null)
-                return;
-
-            // TODO: Figure out what this means
-            if (newStateMachinePlayer.GetClass() == "ScriptEditorDebuggerInspectedObject")
-                return;
+            StateMachinePlayer = newStateMachinePlayer;
 
             if (newStateMachinePlayer != null)
                 createNewStateMachineContainer.Visible = newStateMachinePlayer.StateMachine == null;
@@ -497,24 +494,15 @@ namespace Fractural.StateMachine
                 createNewStateMachineContainer.Visible = false;
         }
 
-        private void OnStateMachineChanged(StateMachine newStateMachine)
+        private void ConfigureNewStateMachine(StateMachine newStateMachine)
         {
-            var rootLayer = GetLayer("root");
-            pathViewer.SelectDir("root");// Before selectLayer, so pathViewer will be updated in OnLayerSelected
-            SelectLayer(rootLayer);
-            ClearGraph(rootLayer);
-            // Reset layers & path viewer
-            foreach (Node child in rootLayer.GetChildren())
-            {
-                if (child is FlowchartLayer layer)
-                {
-                    rootLayer.RemoveChild(child);
-                    child.QueueFree();
-                }
-            }
+            StateMachine = newStateMachine;
+            pathViewer.SelectDir("root");
+
             if (newStateMachine != null)
             {
-                rootLayer.StateMachine = stateMachine;
+                var rootLayer = GetLayer("root");
+                rootLayer.StateMachine = StateMachine;
                 var validated = StateMachine.Validate(newStateMachine);
                 if (validated)
                 {
@@ -525,100 +513,52 @@ namespace Fractural.StateMachine
             }
         }
 
-        public override void _GuiInput(InputEvent inputEvent)
+        public void OnNodeNewNameEntered(string newName, StateNode node)
         {
-            base._GuiInput(inputEvent);
-            if (inputEvent is InputEventMouseButton mouseButtonEvent)
+            var oldName = node.State.Name;
+            if (oldName == newName)
+                return;
+
+            if (newName.Empty())
             {
-                switch (mouseButtonEvent.ButtonIndex)
-                {
-                    case (int)ButtonList.Right:
-                        if (mouseButtonEvent.Pressed && CanGuiContextMenu)
-                        {
-                            contextMenu.SetItemDisabled(1, CurrentLayer.StateMachine.HasEntry);
-                            contextMenu.SetItemDisabled(2, CurrentLayer.StateMachine.HasExit);
-                            contextMenu.RectPosition = GetViewport().GetMousePosition();
-                            contextMenu.Popup_();
-                        }
-                        break;
-                }
+                GD.PushWarning($"Illegal State Name: State name cannot be empty!");
+                node.RevertStateName();
+                return;
             }
-        }
 
-        public override void _Input(InputEvent inputEvent)
-        {
-            base._Input(inputEvent);
-            // Intercept save action
-            if (Visible && inputEvent is InputEventKey keyEvent)
+            if (newName.Contains("/") || newName.Contains("\\")) // No back/forward-slash
             {
-                switch (keyEvent.Scancode)
-                {
-                    case (int)ButtonList.Right:
-                        if (keyEvent.Control && keyEvent.Pressed)
-                            SaveRequest();
-                        break;
-                }
+                GD.PushWarning($"Illegal State Name: / && \\ are !allowed in State Name({newName})");
+                node.RevertStateName();
+                return;
             }
-        }
 
-        public StateMachineEditorLayer CreateLayer(StateNode node)
-        {
-            var path = pathViewer.GetCwd() + "/" + node.Name;
-            var result = TryConvertToStateMachineAndAddLayer(path);
-            previousIndex = pathViewer.GetChildCount() - 1;
-            previousPath = path;
-            return result;
-        }
-
-        public StateMachineEditorLayer OpenLayer(string path)
-        {
-            var dir = new StateDirectory(path);
-            dir.Goto(dir.EndIndex);
-            dir.GotoPrevious();
-            var nextLayer = GetNextLayer(dir, GetLayer("root"));
-            SelectLayer(nextLayer);
-            return nextLayer;
-        }
-
-        // TODO: Figure out what "next layer" means???
-        /// <summary>
-        /// Recursively get next layer
-        /// </summary>
-        /// <param name="dir"></param>
-        /// <param name="baseLayer"></param>
-        /// <returns></returns>
-        public StateMachineEditorLayer GetNextLayer(StateDirectory dir, StateMachineEditorLayer baseLayer)
-        {
-            var nextLayer = baseLayer;
-            var nextLayerName = dir.GotoNext();
-            if (nextLayerName != null)
+            if (!CurrentLayer.StateMachine.ChangeStateName(oldName, newName))
             {
-                nextLayer = baseLayer.GetNodeOrNull<StateMachineEditorLayer>(nextLayerName);
-                if (nextLayer != null)
-                {
-                    nextLayer = GetNextLayer(dir, nextLayer);
-                }
-                else
-                {
-                    var toDir = new StateDirectory(dir.CurrentPath);
-
-                    toDir.Goto(toDir.EndIndex);
-                    toDir.GotoPrevious();
-                    var node = baseLayer.ContentNodes.GetNodeOrNull<StateNode>(toDir.CurrentEnd);
-                    nextLayer = GetNextLayer(dir, CreateLayer(node));
-                }
+                GD.PushWarning($"State Name: {newName} already exists!");
+                node.RevertStateName();
+                return;
             }
-            return nextLayer;
+
+            RenameNode(CurrentLayer, node.Name, newName);
+            node.State.Name = newName;
+            node.Name = newName;
+
+            UpdateConnectionLines(node.Name);
+
+            // Rename layer as well
+            var path = GD.Str(pathViewer.GetCwd(), "/", node.Name);
+            var layer = GetLayer(path);
+            if (layer != null)
+                layer.Name = newName;
+
+            pathViewer.RenameDirectory(oldName, newName);
+            OnEdited();
         }
 
-        public StateMachineEditorLayer GetFocusedLayer(string state)
+        public void OnEdited()
         {
-            var currentDir = new StateDirectory(state);
-
-            currentDir.Goto(currentDir.EndIndex);
-            currentDir.GotoPrevious();
-            return GetLayer(GD.Str("root/", currentDir.CurrentPath));
-
+            unsavedIndicator.Text = "*";
         }
 
         private void OnStateNodeGuiInput(InputEvent inputEvent, StateNode node)
@@ -661,6 +601,67 @@ namespace Fractural.StateMachine
                         break;
                 }
             }
+        }
+        #endregion
+
+        #region Utils
+        private StateMachineEditorLayer CreateLayer(StateNode node)
+        {
+            var path = pathViewer.GetCwd() + "/" + node.Name;
+            var result = TryConvertToStateMachineAndAddLayer(path);
+            previousIndex = pathViewer.GetChildCount() - 1;
+            previousPath = path;
+            return result;
+        }
+
+        private StateMachineEditorLayer OpenLayer(string path)
+        {
+            var dir = new StateDirectory(path);
+            dir.Goto(dir.EndIndex);
+            dir.GotoPrevious();
+            var nextLayer = GetNextLayer(dir, GetLayer("root"));
+            SelectLayer(nextLayer);
+            return nextLayer;
+        }
+
+        // TODO: Figure out what "next layer" means???
+        /// <summary>
+        /// Recursively get next layer
+        /// </summary>
+        /// <param name="dir"></param>
+        /// <param name="baseLayer"></param>
+        /// <returns></returns>
+        private StateMachineEditorLayer GetNextLayer(StateDirectory dir, StateMachineEditorLayer baseLayer)
+        {
+            var nextLayer = baseLayer;
+            var nextLayerName = dir.GotoNext();
+            if (nextLayerName != null)
+            {
+                nextLayer = baseLayer.GetNodeOrNull<StateMachineEditorLayer>(nextLayerName);
+                if (nextLayer != null)
+                {
+                    nextLayer = GetNextLayer(dir, nextLayer);
+                }
+                else
+                {
+                    var toDir = new StateDirectory(dir.CurrentPath);
+
+                    toDir.Goto(toDir.EndIndex);
+                    toDir.GotoPrevious();
+                    var node = baseLayer.ContentNodes.GetNodeOrNull<StateNode>(toDir.CurrentEnd);
+                    nextLayer = GetNextLayer(dir, CreateLayer(node));
+                }
+            }
+            return nextLayer;
+        }
+
+        private StateMachineEditorLayer GetFocusedLayer(string state)
+        {
+            var currentDir = new StateDirectory(state);
+
+            currentDir.Goto(currentDir.EndIndex);
+            currentDir.GotoPrevious();
+            return GetLayer(GD.Str("root/", currentDir.CurrentPath));
         }
 
         /// <summary>
@@ -758,32 +759,32 @@ namespace Fractural.StateMachine
         /// <summary>
         /// Request to save current editing StateMachine
         /// </summary>
-        public void SaveRequest()
+        private void SaveRequest()
         {
             if (!CanSave())
                 return;
 
-            saveDialog.DialogText = $"Saving StateMachine to {stateMachine.ResourcePath}";
+            saveDialog.DialogText = $"Saving StateMachine to {StateMachine.ResourcePath}";
             saveDialog.PopupCentered();
         }
 
         /// <summary>
         /// Save current editing StateMachine
         /// </summary>
-        public void Save()
+        private void Save()
         {
             if (!CanSave())
                 return;
 
             unsavedIndicator.Text = "";
-            ResourceSaver.Save(stateMachine.ResourcePath, stateMachine);
+            ResourceSaver.Save(StateMachine.ResourcePath, StateMachine);
         }
 
         /// <summary>
         /// Clear editor
         /// </summary>
         /// <param name="layer"></param>
-        public void ClearGraph(FlowchartLayer layer)
+        private void ClearGraph(FlowchartLayer layer)
         {
             ClearConnections();
             foreach (Control child in layer.ContentNodes.GetChildren())
@@ -801,7 +802,7 @@ namespace Fractural.StateMachine
         /// Intialize the node and connections for a state layer using its StateMachine
         /// </summary>
         /// <param name="layer"></param>
-        public void PopulateStateLayer(StateMachineEditorLayer layer)
+        private void PopulateStateLayer(StateMachineEditorLayer layer)
         {
             foreach (string stateKey in layer.StateMachine.States.Keys)
             {
@@ -832,55 +833,11 @@ namespace Fractural.StateMachine
             unsavedIndicator.Text = ""; // Draw graph is not an action by user
         }
 
-        /// <summary>
-        /// Add message to MessageBox (overlay text at bottom of editor)
-        /// </summary>
-        /// <param name="key"></param>
-        /// <param name="text"></param>
-        /// <returns></returns>
-        public Label AddMessage(MessageBoxMessage message)
-        {
-            var label = new Label();
-            label.Text = message.Text;
-            messageBoxDict[message.Key] = label;
-            messageBox.AddChild(label);
-            return label;
-        }
-
-        /// <summary>
-        /// Returns whether the MessageBox already has <paramref name="message"/> or not.
-        /// </summary>
-        /// <param name="message"></param>
-        /// <returns></returns>
-        public bool HasMessage(MessageBoxMessage message)
-        {
-            return messageBoxDict.Contains(message.Key);
-        }
-
-        /// <summary>
-        /// Remove message from the MessageBox
-        /// </summary>
-        /// <param name="key"></param>
-        /// <returns></returns>
-        public bool RemoveMessage(MessageBoxMessage message)
-        {
-            var control = messageBoxDict.Get<Label>(message.Key);
-            if (control != null)
-            {
-                messageBoxDict.Remove(message.Key);
-                messageBox.RemoveChild(control);
-                // Weird behavior of VBoxContainer, only sort children properly after changing growDirection
-                messageBox.GrowVertical = GrowDirection.End;
-                messageBox.GrowVertical = GrowDirection.Begin;
-                return true;
-            }
-            return false;
-        }
 
         /// <summary>
         /// Check if current editing StateMachine has entry, warns user if entry state missing
         /// </summary>
-        public void CheckHasEntry()
+        private void CheckHasEntry()
         {
             if (CurrentLayer.StateMachine == null)
                 return;
@@ -926,6 +883,75 @@ namespace Fractural.StateMachine
                     RemoveMessage(ExitStateMissingMsg);
             }
         }
+
+
+        /// <summary>
+        /// Return true if current editing StateMachine can be saved, ignore built-in resource
+        /// </summary>
+        /// <returns></returns>
+        private bool CanSave()
+        {
+            if (StateMachine == null)
+                return false;
+
+            var resourcePath = StateMachine.ResourcePath;
+            if (resourcePath.Empty())
+                return false;
+
+            if (resourcePath.Contains(".scn") || resourcePath.Contains(".tscn")) // Built-in resource will be saved by scene
+                return false;
+            return true;
+        }
+        #endregion
+
+        #region MessageBox Methods
+        // TODO: Might want to refactor out messaging, since the StateMachineEditor is a bit cramped now
+
+        /// <summary>
+        /// Add message to MessageBox (overlay text at bottom of editor)
+        /// </summary>
+        /// <param name="key"></param>
+        /// <param name="text"></param>
+        /// <returns></returns>
+        protected Label AddMessage(MessageBoxMessage message)
+        {
+            var label = new Label();
+            label.Text = message.Text;
+            messageBoxDict[message.Key] = label;
+            messageBox.AddChild(label);
+            return label;
+        }
+
+        /// <summary>
+        /// Returns whether the MessageBox already has <paramref name="message"/> or not.
+        /// </summary>
+        /// <param name="message"></param>
+        /// <returns></returns>
+        protected bool HasMessage(MessageBoxMessage message)
+        {
+            return messageBoxDict.Contains(message.Key);
+        }
+
+        /// <summary>
+        /// Remove message from the MessageBox
+        /// </summary>
+        /// <param name="key"></param>
+        /// <returns></returns>
+        protected bool RemoveMessage(MessageBoxMessage message)
+        {
+            var control = messageBoxDict.Get<Label>(message.Key);
+            if (control != null)
+            {
+                messageBoxDict.Remove(message.Key);
+                messageBox.RemoveChild(control);
+                // Weird behavior of VBoxContainer, only sort children properly after changing growDirection
+                messageBox.GrowVertical = GrowDirection.End;
+                messageBox.GrowVertical = GrowDirection.Begin;
+                return true;
+            }
+            return false;
+        }
+        #endregion
 
         #region Flowchart Lifetime Calls
         protected override void OnLayerSelected(FlowchartLayer layer)
@@ -1096,52 +1122,86 @@ namespace Fractural.StateMachine
         }
         #endregion
 
-        public void OnNodeNewNameEntered(string newName, StateNode node)
+        #region Debug
+        public void DebugProcess()
         {
-            var oldName = node.State.Name;
-            if (oldName == newName)
-                return;
-
-            if (newName.Empty())
+            if (!DebugMode)
             {
-                GD.PushWarning($"Illegal State Name: State name cannot be empty!");
-                node.RevertStateName();
+                SetProcess(false);
                 return;
             }
-
-            if (newName.Contains("/") || newName.Contains("\\")) // No back/forward-slash
+            // We only want to debug as long as we have a valid RemoteStateMachinePlayer
+            if (RemoteStateMachinePlayer == null || !IsInstanceValid(RemoteStateMachinePlayer.Source))
             {
-                GD.PushWarning($"Illegal State Name: / && \\ are !allowed in State Name({newName})");
-                node.RevertStateName();
+                SetProcess(false);
+                DebugMode = false;
                 return;
             }
-
-            if (!CurrentLayer.StateMachine.ChangeStateName(oldName, newName))
+            var stack = RemoteStateMachinePlayer.Stack;
+            if (stack.Length == 0)
             {
-                GD.PushWarning($"State Name: {newName} already exists!");
-                node.RevertStateName();
+                SetProcess(false);
+                DebugMode = false;
                 return;
             }
+            if (stack.Length == 1)
+            {
+                SetCurrentDebugState(RemoteStateMachinePlayer.Current);
+            }
+            else
+            {
+                var stackMaxIndex = stack.Length - 1;
+                var prevIndex = stack.IndexOf(currentDebugState);
+                if (prevIndex == -1)
+                {
+                    if (lastStack.Count < stack.Length)
+                    {
+                        // Reproduce transition, for example:
+                        // [Entry, Idle, Walk]
+                        // [Entry, Idle, Jump, Fall]
+                        // Walk -> Idle
+                        // Idle -> Jump
+                        // Jump -> Fall
+                        int commonIndex = -1;
+                        for (int i = 0; i < lastStack.Count; i++)
+                        {
+                            if (lastStack[i] == stack[i])
+                            {
+                                commonIndex = i;
+                                break;
+                            }
+                        }
+                        if (commonIndex > -1)
+                        {
+                            var countFromLastStack = lastStack.Count - 1 - commonIndex - 1;
+                            lastStack.Reverse();
+                            // Transit back to common state
+                            for (int i = 0; i < countFromLastStack; i++)
+                                SetCurrentDebugState(lastStack[i + 1]);
 
-            RenameNode(CurrentLayer, node.Name, newName);
-            node.State.Name = newName;
-            node.Name = newName;
-
-            UpdateConnectionLines(node.Name);
-
-            // Rename layer as well
-            var path = GD.Str(pathViewer.GetCwd(), "/", node.Name);
-            var layer = GetLayer(path);
-            if (layer != null)
-                layer.Name = newName;
-
-            pathViewer.RenameDirectory(oldName, newName);
-            OnEdited();
-        }
-
-        public void OnEdited()
-        {
-            unsavedIndicator.Text = "*";
+                            // Transit to all missing state in current stack
+                            for (int i = commonIndex + 1; i < stack.Length; i++)
+                                SetCurrentDebugState(stack[i]);
+                        }
+                        else
+                            SetCurrentDebugState(stack.PeekBack());
+                    }
+                    else
+                        SetCurrentDebugState(stack.PeekBack());
+                }
+                else
+                {
+                    // Set every skipped state
+                    var missingCount = stackMaxIndex - prevIndex;
+                    foreach (var i in GD.Range(1, missingCount + 1))
+                        SetCurrentDebugState(stack[prevIndex + i]);
+                }
+            }
+            lastStack = new List<string>(stack);
+            var globalParams = RemoteStateMachinePlayer.Parameters;
+            var localParams = RemoteStateMachinePlayer.LocalParameters;
+            paramPanel.UpdateParams(globalParams, localParams);
+            GetFocusedLayer(currentDebugState).DebugUpdate(currentDebugState, globalParams, localParams);
         }
 
         public void OnRemoteTransited(string from, string to)
@@ -1204,38 +1264,22 @@ namespace Fractural.StateMachine
                 focusedLayer = GetFocusedLayer(to);
                 if (focusedLayer == null)
                     focusedLayer = OpenLayer(to);
-
                 focusedLayer.DebugTransitIn(from, to);
             }
         }
 
-        /// <summary>
-        /// Return true if current editing StateMachine can be saved, ignore built-in resource
-        /// </summary>
-        /// <returns></returns>
-        public bool CanSave()
+        private void SetCurrentDebugState(string v)
         {
-            if (StateMachine == null)
-                return false;
-
-            var resourcePath = stateMachine.ResourcePath;
-            if (resourcePath.Empty())
-                return false;
-
-            if (resourcePath.Contains(".scn") || resourcePath.Contains(".tscn")) // Built-in resource will be saved by scene
-                return false;
-            return true;
-        }
-
-        public void SetCurrentState(string v)
-        {
-            if (currentState != v)
+            if (currentDebugState != v)
             {
-                var from = currentState;
+                var from = currentDebugState;
                 var to = v;
-                currentState = v;
+                currentDebugState = v;
                 OnRemoteTransited(from, to);
             }
         }
+        #endregion
+
+        #endregion
     }
 }

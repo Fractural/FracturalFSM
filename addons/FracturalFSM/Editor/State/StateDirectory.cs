@@ -17,7 +17,16 @@ namespace Fractural.StateMachine
         /// <summary>
         /// Get current full path
         /// </summary>
-        public string CurrentPath => string.Join(",", new ArraySegment<string>(dirs, BaseIndex, BaseIndex - currentIndex + 1));
+        public string CurrentPath
+        {
+            get
+            {
+                string result = "";
+                for (int i = 0; i < currentIndex; i++)
+                    result += dirs[i];
+                return result;
+            }
+        }
         /// <summary>
         /// Get base state name
         /// </summary>
@@ -99,14 +108,7 @@ namespace Fractural.StateMachine
         /// <summary>
         /// Get current end state name of path
         /// </summary>
-        public string CurrentEnd
-        {
-            get
-            {
-                var currentPath = CurrentPath;
-                return currentPath.Right(currentPath.FindLast("/") + 1);
-            }
-        }
+        public string CurrentEnd => StateDirectory.GetStateFromPath(CurrentPath);
 
         /// <summary>
         /// Get index of base state
@@ -140,7 +142,10 @@ namespace Fractural.StateMachine
         /// <returns></returns>
         public static string GetBaseDirectoryFromPath(string path)
         {
-            return path.Substr(0, path.FindLast("/"));
+            int lastSlashIdx = path.FindLast("/");
+            if (lastSlashIdx < 0)
+                return "";
+            return path.Substr(0, lastSlashIdx);
         }
 
         /// <summary>
@@ -150,7 +155,10 @@ namespace Fractural.StateMachine
         /// <returns></returns>
         public static string GetStateFromPath(string path)
         {
-            return path.Right(path.FindLast("/") + 1);
+            int lastSlashIdx = path.FindLast("/");
+            if (lastSlashIdx < 0)
+                return path;
+            return path.Substring(lastSlashIdx + 1);
         }
     }
 }

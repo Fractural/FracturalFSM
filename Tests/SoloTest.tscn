@@ -1,0 +1,66 @@
+[gd_scene load_steps=11 format=2]
+
+[ext_resource path="res://addons/FracturalFSM/CustomTypes/StateMachinePlayer.cs" type="Script" id=1]
+[ext_resource path="res://addons/FracturalFSM/CustomTypes/StateMachine.cs" type="Script" id=2]
+[ext_resource path="res://addons/FracturalFSM/Editor/State/State.cs" type="Script" id=3]
+[ext_resource path="res://addons/FracturalFSM/Editor/Transition/Transition.cs" type="Script" id=4]
+
+[sub_resource type="Resource" id=1]
+script = ExtResource( 3 )
+__meta__ = {
+"graph_offset": Vector2( 85.7955, 152.47 )
+}
+Name = "Entry"
+
+[sub_resource type="Resource" id=2]
+script = ExtResource( 3 )
+__meta__ = {
+"graph_offset": Vector2( 246.212, 83.0255 )
+}
+Name = "State"
+
+[sub_resource type="Resource" id=4]
+script = ExtResource( 3 )
+__meta__ = {
+"graph_offset": Vector2( 248, 180 )
+}
+Name = "State2"
+
+[sub_resource type="Resource" id=5]
+script = ExtResource( 4 )
+From = "State"
+To = "State2"
+Conditions = {
+}
+priority = 0
+
+[sub_resource type="Resource" id=6]
+script = ExtResource( 4 )
+From = "State2"
+To = "State"
+Conditions = {
+}
+priority = 0
+
+[sub_resource type="Resource" id=3]
+script = ExtResource( 2 )
+Name = ""
+States = {
+"Entry": SubResource( 1 ),
+"State": SubResource( 2 ),
+"State2": SubResource( 4 )
+}
+transitions = {
+"State": {
+"State2": SubResource( 5 )
+},
+"State2": {
+"State": SubResource( 6 )
+}
+}
+
+[node name="SoloTest" type="Node2D"]
+
+[node name="StateMachinePlayer" type="Node" parent="."]
+script = ExtResource( 1 )
+StateMachineResource = SubResource( 3 )

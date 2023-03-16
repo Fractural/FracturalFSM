@@ -62,7 +62,7 @@ namespace Tests.Manual
 
         private void OnTransited(string from, string to)
         {
-            GD.Print($"Transition({from}->{to})");
+            //GD.Print($"Transition({from}->{to})");
         }
 
         public override void _UnhandledInput(InputEvent @event)

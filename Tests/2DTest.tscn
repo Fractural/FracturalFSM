@@ -2,6 +2,7 @@
 
 [ext_resource path="res://addons/FracturalFSM/Editor/Transition/Transition.cs" type="Script" id=1]
 [ext_resource path="res://addons/FracturalFSM/Editor/Conditions/TriggerCondition/TriggerCondition.cs" type="Script" id=2]
+[ext_resource path="res://addons/FracturalFSM/Editor/Conditions/BoolCondition/BoolCondition.cs" type="Script" id=3]
 [ext_resource path="res://Tests/Player.cs" type="Script" id=4]
 [ext_resource path="res://icon.png" type="Texture" id=5]
 [ext_resource path="res://addons/FracturalFSM/CustomTypes/StateMachine.cs" type="Script" id=6]
@@ -11,44 +12,37 @@
 [sub_resource type="Resource" id=2]
 script = ExtResource( 8 )
 __meta__ = {
-"graph_offset": Vector2( -112, 40 )
+"graph_offset": Vector2( 368, 80 )
 }
 Name = "Entry"
-
-[sub_resource type="Resource" id=40]
-script = ExtResource( 8 )
-__meta__ = {
-"graph_offset": Vector2( 68, 20 )
-}
-Name = "Idle"
-
-[sub_resource type="Resource" id=36]
-script = ExtResource( 8 )
-__meta__ = {
-"graph_offset": Vector2( 308, 140 )
-}
-Name = "Walk"
-
-[sub_resource type="Resource" id=37]
-script = ExtResource( 8 )
-__meta__ = {
-"graph_offset": Vector2( 68, 220 )
-}
-Name = "Jump"
-
-[sub_resource type="Resource" id=41]
-script = ExtResource( 8 )
-__meta__ = {
-"graph_offset": Vector2( 64, 320 )
-}
-Name = "Jump(n)"
 
 [sub_resource type="Resource" id=42]
 script = ExtResource( 8 )
 __meta__ = {
-"graph_offset": Vector2( 308, 300 )
+"graph_offset": Vector2( 648, 260 )
 }
 Name = "Fall"
+
+[sub_resource type="Resource" id=40]
+script = ExtResource( 8 )
+__meta__ = {
+"graph_offset": Vector2( 528, 60 )
+}
+Name = "Idle"
+
+[sub_resource type="Resource" id=41]
+script = ExtResource( 8 )
+__meta__ = {
+"graph_offset": Vector2( 864, 220 )
+}
+Name = "Jump(n)"
+
+[sub_resource type="Resource" id=50]
+script = ExtResource( 8 )
+__meta__ = {
+"graph_offset": Vector2( 828, 60 )
+}
+Name = "Jump"
 
 [sub_resource type="Resource" id=5]
 script = ExtResource( 1 )
@@ -58,11 +52,31 @@ Conditions = {
 }
 priority = 0
 
-[sub_resource type="Resource" id=39]
+[sub_resource type="Resource" id=46]
+script = ExtResource( 3 )
+Name = "on_floor"
+Comparation = 0
+value = true
+
+[sub_resource type="Resource" id=47]
 script = ExtResource( 1 )
-From = "Idle"
-To = "Walk"
+From = "Fall"
+To = "Idle"
 Conditions = {
+"on_floor": SubResource( 46 )
+}
+priority = 0
+
+[sub_resource type="Resource" id=48]
+script = ExtResource( 2 )
+Name = "space"
+
+[sub_resource type="Resource" id=49]
+script = ExtResource( 1 )
+From = "Fall"
+To = "Jump(n)"
+Conditions = {
+"space": SubResource( 48 )
 }
 priority = 0
 
@@ -87,27 +101,6 @@ Conditions = {
 }
 priority = 0
 
-[sub_resource type="Resource" id=46]
-script = ExtResource( 1 )
-From = "Jump(n)"
-To = "Fall"
-Conditions = {
-}
-priority = 0
-
-[sub_resource type="Resource" id=47]
-script = ExtResource( 2 )
-Name = "walk"
-
-[sub_resource type="Resource" id=48]
-script = ExtResource( 1 )
-From = "Walk"
-To = "Jump"
-Conditions = {
-"walk": SubResource( 47 )
-}
-priority = 0
-
 [sub_resource type="Resource" id=3]
 script = ExtResource( 6 )
 Name = ""
@@ -115,26 +108,22 @@ States = {
 "Entry": SubResource( 2 ),
 "Fall": SubResource( 42 ),
 "Idle": SubResource( 40 ),
-"Jump": SubResource( 37 ),
-"Jump(n)": SubResource( 41 ),
-"Walk": SubResource( 36 )
+"Jump": SubResource( 50 ),
+"Jump(n)": SubResource( 41 )
 }
 transitions = {
 "Entry": {
 "Idle": SubResource( 5 )
 },
+"Fall": {
+"Idle": SubResource( 47 ),
+"Jump(n)": SubResource( 49 )
+},
 "Idle": {
-"Jump": SubResource( 44 ),
-"Walk": SubResource( 39 )
+"Jump": SubResource( 44 )
 },
 "Jump": {
 "Fall": SubResource( 45 )
-},
-"Jump(n)": {
-"Fall": SubResource( 46 )
-},
-"Walk": {
-"Jump": SubResource( 48 )
 }
 }
 
@@ -144,10 +133,10 @@ radius = 32.0
 [sub_resource type="RectangleShape2D" id=34]
 extents = Vector2( 293, 10 )
 
-[node name="Test" type="Node2D"]
+[node name="2DTest" type="Node2D"]
 
 [node name="Player" type="KinematicBody2D" parent="."]
-position = Vector2( 510, 325 )
+position = Vector2( 504, 458 )
 script = ExtResource( 4 )
 Damping = 0.1
 StateMachinePlayerPath = NodePath("StateMachinePlayer")
@@ -155,6 +144,10 @@ StateMachinePlayerPath = NodePath("StateMachinePlayer")
 [node name="StateMachinePlayer" type="Node" parent="Player"]
 script = ExtResource( 7 )
 StateMachineResource = SubResource( 3 )
+parameters = {
+}
+localParameters = {
+}
 
 [node name="Sprite" type="Sprite" parent="Player"]
 scale = Vector2( 0.241245, 0.241245 )
@@ -164,6 +157,7 @@ texture = ExtResource( 5 )
 shape = SubResource( 35 )
 
 [node name="Camera2D" type="Camera2D" parent="Player"]
+current = true
 
 [node name="Platform" type="StaticBody2D" parent="."]
 position = Vector2( 227, 538 )

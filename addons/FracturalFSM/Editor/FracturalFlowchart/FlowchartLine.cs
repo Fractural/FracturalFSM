@@ -64,12 +64,12 @@ namespace Fractural.Flowchart
         public void Join(Vector2 from, Vector2 to, Vector2 offset = default, IEnumerable<Rect2> clipRects = null)
         {
             // Offset along perpendicular direction
+            var dir = from.DirectionTo(to);
             var perpDir = from.DirectionTo(to).Rotated(Mathf.Deg2Rad(90)).Normalized();
-            from -= perpDir * offset;
-            to -= perpDir * offset;
+            from -= dir * offset.x + perpDir * offset.y;
+            to -= dir * offset.x + perpDir * offset.y;
 
             var dist = from.DistanceTo(to);
-            var dir = from.DirectionTo(to);
             var center = from + dir * dist / 2;
 
             // Clip line with provided Rect2 array

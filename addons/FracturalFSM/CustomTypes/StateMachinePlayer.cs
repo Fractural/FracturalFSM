@@ -8,8 +8,9 @@ using GDC = Godot.Collections;
 
 namespace Fractural.StateMachine
 {
+    [CSharpScript]
     [Tool]
-    public partial class StateMachinePlayer : StackPlayer
+    public partial class StateMachinePlayer : StateStackPlayer
     {
         [Signal] public delegate void Transited(string from, string to);   // Transition of state
         [Signal] public delegate void Entered(string to);                  // Entry of state Machine(including nested), empty string equals to root
@@ -84,7 +85,7 @@ namespace Fractural.StateMachine
 
         public override string Current => base.Current != null ? base.Current : "";
         public override string Previous => base.Previous != null ? base.Previous : "";
-
+        [Export]
         // TODO: Figure out if duplicating is necessary
         private GDC.Dictionary parameters; // Parameters to be passed to condition
         /// <summary>
@@ -93,6 +94,7 @@ namespace Fractural.StateMachine
         /// <returns></returns>
         public GDC.Dictionary Parameters => parameters.Duplicate();
 
+        [Export]
         private GDC.Dictionary localParameters;
         public GDC.Dictionary LocalParamters => localParameters.Duplicate();
 

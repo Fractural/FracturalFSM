@@ -7,7 +7,7 @@ using Fractural.Utils;
 
 namespace Fractural.StateMachine
 {
-    public class StackPlayer : Node
+    public class StateStackPlayer : Node
     {
 
         [Signal] public delegate void Pushed(string to);    // When item pushed to stack
@@ -31,13 +31,10 @@ namespace Fractural.StateMachine
         /// Current item on top of stack
         /// </summary>
         public virtual string Current => stack.FirstOrDefault();
-        private List<string> stack; // We use a list as a stack becasue we need to also access items by index in case of a refresh
+        // Exported but should not be set by the user.
+        [Export]
+        private List<string> stack = new List<string>(); // We use a list as a stack becasue we need to also access items by index in case of a refresh
         public IReadOnlyList<string> Stack => stack;
-
-        public StackPlayer()
-        {
-            stack = new List<string>();
-        }
 
         /// <summary>
         /// Push an item to the top of stackz
