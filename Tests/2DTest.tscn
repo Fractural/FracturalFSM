@@ -40,7 +40,7 @@ Name = "Jump(n)"
 [sub_resource type="Resource" id=50]
 script = ExtResource( 8 )
 __meta__ = {
-"graph_offset": Vector2( 828, 60 )
+"graph_offset": Vector2( 848, 80 )
 }
 Name = "Jump"
 

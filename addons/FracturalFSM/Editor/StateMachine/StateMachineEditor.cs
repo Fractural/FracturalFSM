@@ -503,8 +503,8 @@ namespace Fractural.StateMachine
             {
                 var rootLayer = GetLayer("root");
                 rootLayer.StateMachine = StateMachine;
-                var validated = StateMachine.Validate(newStateMachine);
-                if (validated)
+                var corrected = StateMachine.Validate(newStateMachine);
+                if (corrected)
                 {
                     GD.Print("Corrupted FracturalFSM StateMachine Resource fixed, save to apply the fix.");
                 }
