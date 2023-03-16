@@ -1,12 +1,15 @@
-[gd_scene load_steps=27 format=2]
+[gd_scene load_steps=39 format=2]
 
 [ext_resource path="res://addons/FracturalFSM/Editor/Transition/Transition.cs" type="Script" id=1]
 [ext_resource path="res://addons/FracturalFSM/Editor/Conditions/FloatCondition/FloatCondition.cs" type="Script" id=2]
+[ext_resource path="res://addons/FracturalFSM/Editor/Conditions/BoolCondition/BoolCondition.cs" type="Script" id=3]
 [ext_resource path="res://Tests/Player.cs" type="Script" id=4]
 [ext_resource path="res://icon.png" type="Texture" id=5]
 [ext_resource path="res://addons/FracturalFSM/CustomTypes/StateMachine.cs" type="Script" id=6]
 [ext_resource path="res://addons/FracturalFSM/CustomTypes/StateMachinePlayer.cs" type="Script" id=7]
 [ext_resource path="res://addons/FracturalFSM/Editor/State/State.cs" type="Script" id=8]
+[ext_resource path="res://addons/FracturalFSM/Editor/Conditions/IntegerCondition/IntegerCondition.cs" type="Script" id=9]
+[ext_resource path="res://addons/FracturalFSM/Editor/Conditions/TriggerCondition/TriggerCondition.cs" type="Script" id=10]
 
 [sub_resource type="Resource" id=2]
 script = ExtResource( 8 )
@@ -15,6 +18,13 @@ __meta__ = {
 }
 Name = "Entry"
 
+[sub_resource type="Resource" id=38]
+script = ExtResource( 8 )
+__meta__ = {
+"graph_offset": Vector2( 648, 380 )
+}
+Name = "Fall"
+
 [sub_resource type="Resource" id=36]
 script = ExtResource( 8 )
 __meta__ = {
@@ -22,33 +32,26 @@ __meta__ = {
 }
 Name = "Idle"
 
-[sub_resource type="Resource" id=37]
-script = ExtResource( 8 )
-__meta__ = {
-"graph_offset": Vector2( 648, 120 )
-}
-Name = "Walk"
-
-[sub_resource type="Resource" id=38]
-script = ExtResource( 8 )
-__meta__ = {
-"graph_offset": Vector2( 648, 340 )
-}
-Name = "Fall"
-
 [sub_resource type="Resource" id=39]
 script = ExtResource( 8 )
 __meta__ = {
-"graph_offset": Vector2( 828, 220 )
+"graph_offset": Vector2( 808, 220 )
 }
 Name = "Jump"
 
 [sub_resource type="Resource" id=40]
 script = ExtResource( 8 )
 __meta__ = {
-"graph_offset": Vector2( 824, 340 )
+"graph_offset": Vector2( 644, 560 )
 }
 Name = "Jump(n)"
+
+[sub_resource type="Resource" id=37]
+script = ExtResource( 8 )
+__meta__ = {
+"graph_offset": Vector2( 648, 80 )
+}
+Name = "Walk"
 
 [sub_resource type="Resource" id=41]
 script = ExtResource( 1 )
@@ -58,19 +61,88 @@ Conditions = {
 }
 priority = 0
 
-[sub_resource type="Resource" id=42]
+[sub_resource type="Resource" id=55]
+script = ExtResource( 3 )
+Name = "on_floor"
+Comparation = 0
+value = true
+
+[sub_resource type="Resource" id=47]
 script = ExtResource( 1 )
-From = "Walk"
-To = "Jump"
+From = "Fall"
+To = "Idle"
 Conditions = {
+"on_floor": SubResource( 55 )
 }
 priority = 0
 
-[sub_resource type="Resource" id=43]
+[sub_resource type="Resource" id=56]
+script = ExtResource( 9 )
+Name = "jump_count"
+Comparation = 3
+value = 2
+
+[sub_resource type="Resource" id=58]
+script = ExtResource( 10 )
+Name = "space"
+
+[sub_resource type="Resource" id=61]
+script = ExtResource( 2 )
+Name = "jump_elapsed"
+Comparation = 5
+value = 1500.0
+
+[sub_resource type="Resource" id=48]
 script = ExtResource( 1 )
-From = "Walk"
-To = "Idle"
+From = "Fall"
+To = "Jump(n)"
 Conditions = {
+"jump_count": SubResource( 56 ),
+"jump_elapsed": SubResource( 61 ),
+"space": SubResource( 58 )
+}
+priority = 0
+
+[sub_resource type="Resource" id=53]
+script = ExtResource( 3 )
+Name = "on_floor"
+Comparation = 0
+value = false
+
+[sub_resource type="Resource" id=46]
+script = ExtResource( 1 )
+From = "Idle"
+To = "Fall"
+Conditions = {
+"on_floor": SubResource( 53 )
+}
+priority = 0
+
+[sub_resource type="Resource" id=60]
+script = ExtResource( 10 )
+Name = "space"
+
+[sub_resource type="Resource" id=45]
+script = ExtResource( 1 )
+From = "Idle"
+To = "Jump"
+Conditions = {
+"space": SubResource( 60 )
+}
+priority = 0
+
+[sub_resource type="Resource" id=54]
+script = ExtResource( 2 )
+Name = "walk"
+Comparation = 2
+value = 0.0
+
+[sub_resource type="Resource" id=50]
+script = ExtResource( 1 )
+From = "Idle"
+To = "Walk"
+Conditions = {
+"walk": SubResource( 54 )
 }
 priority = 0
 
@@ -82,50 +154,39 @@ Conditions = {
 }
 priority = 0
 
-[sub_resource type="Resource" id=45]
+[sub_resource type="Resource" id=59]
 script = ExtResource( 1 )
-From = "Idle"
-To = "Jump"
-Conditions = {
-}
-priority = 0
-
-[sub_resource type="Resource" id=46]
-script = ExtResource( 1 )
-From = "Idle"
+From = "Jump(n)"
 To = "Fall"
 Conditions = {
 }
 priority = 0
 
-[sub_resource type="Resource" id=49]
+[sub_resource type="Resource" id=52]
 script = ExtResource( 2 )
 Name = "walk"
-Comparation = 2
+Comparation = 5
 value = 0.0
 
-[sub_resource type="Resource" id=50]
+[sub_resource type="Resource" id=43]
 script = ExtResource( 1 )
-From = "Idle"
-To = "Walk"
-Conditions = {
-"walk": SubResource( 49 )
-}
-priority = 0
-
-[sub_resource type="Resource" id=47]
-script = ExtResource( 1 )
-From = "Fall"
+From = "Walk"
 To = "Idle"
 Conditions = {
+"walk": SubResource( 52 )
 }
 priority = 0
 
-[sub_resource type="Resource" id=48]
+[sub_resource type="Resource" id=51]
+script = ExtResource( 10 )
+Name = "space"
+
+[sub_resource type="Resource" id=42]
 script = ExtResource( 1 )
-From = "Fall"
-To = "Jump(n)"
+From = "Walk"
+To = "Jump"
 Conditions = {
+"space": SubResource( 51 )
 }
 priority = 0
 
@@ -156,6 +217,9 @@ transitions = {
 "Jump": {
 "Fall": SubResource( 44 )
 },
+"Jump(n)": {
+"Fall": SubResource( 59 )
+},
 "Walk": {
 "Idle": SubResource( 43 ),
 "Jump": SubResource( 42 )
@@ -171,9 +235,9 @@ extents = Vector2( 293, 10 )
 [node name="2DTest" type="Node2D"]
 
 [node name="Player" type="KinematicBody2D" parent="."]
-position = Vector2( 504, 458 )
+position = Vector2( 505, 458 )
 script = ExtResource( 4 )
-Damping = 0.1
+Damping = 0.5
 StateMachinePlayerPath = NodePath("StateMachinePlayer")
 
 [node name="StateMachinePlayer" type="Node" parent="Player"]

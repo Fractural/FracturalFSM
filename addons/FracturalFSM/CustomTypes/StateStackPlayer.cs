@@ -26,11 +26,11 @@ namespace Fractural.StateMachine
         /// <summary>
         /// State before the current state.
         /// </summary>
-        public virtual string Previous => stack.Count > 1 ? stack.Skip(1).First() : null;
+        public virtual string Previous => stack.Count > 1 ? stack[stack.Count - 2] : null;
         /// <summary>
         /// Current item on top of stack
         /// </summary>
-        public virtual string Current => stack.FirstOrDefault();
+        public virtual string Current => stack.Count > 0 ? stack[stack.Count - 1] : null;
         // Exported but should not be set by the user.
         [Export]
         private List<string> stack = new List<string>(); // We use a list as a stack becasue we need to also access items by index in case of a refresh

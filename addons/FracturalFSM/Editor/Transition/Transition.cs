@@ -61,7 +61,7 @@ namespace Fractural.StateMachine
                     if (hasParam || hasLocalParam)
                     {
                         // localParams > params
-                        var value = hasLocalParam ? localParams.Contains(condition.Name) : transitParams.Get<object>(condition.Name);
+                        var value = hasLocalParam ? localParams.Get<object>(condition.Name) : transitParams.Get<object>(condition.Name);
                         // null value is treated as trigger
                         if (!(value == null || (condition is ValueCondition valueCondition && valueCondition.Compare(value))))
                             return null;

@@ -11,7 +11,8 @@ namespace Fractural.StateMachine
         [OnReadyGet("MarginContainer/FloatValue")]
         private LineEdit floatValue;
 
-        private float _oldValue = 0f;
+        protected override string TypeEditorIcon => "float";
+        private float oldValue = 0f;
 
         [OnReady]
         public new void RealReady()
@@ -42,16 +43,16 @@ namespace Fractural.StateMachine
         private void OnFloatValueTextEntered(string newText)
         {
             if (float.TryParse(newText, out float result))
-                ChangeValueAction(_oldValue, result);
+                ChangeValueAction(oldValue, result);
             else
-                floatValue.Text = _oldValue.ToString();
+                floatValue.Text = oldValue.ToString();
             floatValue.ReleaseFocus();
         }
 
         private void OnFloatValueFocusEntered()
         {
             SetProcessInput(true);
-            _oldValue = float.Parse(floatValue.Text);
+            oldValue = float.Parse(floatValue.Text);
         }
 
         private void OnFloatValueFocusExited()

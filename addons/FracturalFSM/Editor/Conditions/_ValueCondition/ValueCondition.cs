@@ -58,6 +58,8 @@ namespace Fractural.StateMachine
             }
         }
 
+        protected Texture icon;
+
         public ValueCondition(string name = "", ComparationType comparation = ComparationType.Equal) : base(name)
         {
             Comparation = comparation;
@@ -108,6 +110,12 @@ namespace Fractural.StateMachine
                     return other.Equals(Value);
                 case ComparationType.Inequal:
                     return !other.Equals(Value);
+            }
+
+            if (other.GetType() != Value.GetType())
+            {
+                GD.PrintErr($"{GetType().Name} could not compare \"{Value}\" ({Value.GetType().FullName}) with \"{other}\" ({other.GetType().FullName}) because they are not the same type. Do your condition paramters have th same type as the value you're setting in your code?");
+                return false;
             }
 
             if (other is IComparable otherComp && Value is IComparable valueComp)

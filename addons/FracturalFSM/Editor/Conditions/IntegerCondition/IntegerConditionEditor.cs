@@ -13,7 +13,8 @@ namespace Fractural.StateMachine
         [OnReadyGet("MarginContainer/IntegerValue")]
         private LineEdit integerValue;
 
-        private int _oldValue = 0;
+        protected override string TypeEditorIcon => "int";
+        private int oldValue = 0;
 
         [OnReady]
         public new void RealReady()
@@ -44,16 +45,16 @@ namespace Fractural.StateMachine
         private void OnIntegerValueTextEntered(string newText)
         {
             if (int.TryParse(newText, out int result))
-                ChangeValueAction(_oldValue, result);
+                ChangeValueAction(oldValue, result);
             else
-                integerValue.Text = _oldValue.ToString();
+                integerValue.Text = oldValue.ToString();
             integerValue.ReleaseFocus();
         }
 
         private void OnIntegerValueFocusEntered()
         {
             SetProcessInput(true);
-            _oldValue = int.Parse(integerValue.Text);
+            oldValue = int.Parse(integerValue.Text);
         }
 
         private void OnIntegerValueFocusExited()

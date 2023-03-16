@@ -25,12 +25,14 @@ namespace Fractural.StateMachine
         private PopupMenu comparationPopupMenu;
 
         public ValueCondition ValueCondition => Condition as ValueCondition;
+        protected virtual string TypeEditorIcon => "Variant";
 
         [OnReady]
         public new void RealReady()
         {
             comparationButton.Connect("pressed", this, nameof(OnComparationButtonPressed));
             comparationPopupMenu.Connect("id_pressed", this, nameof(OnComparationPopupMenuIdPressed));
+            nameEdit.RightIcon = GetIcon(TypeEditorIcon, "EditorIcons");
         }
 
         private void OnComparationButtonPressed()

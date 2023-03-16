@@ -24,7 +24,7 @@ config/icon="res://icon.png"
 
 [editor_plugins]
 
-enabled=PoolStringArray( "res://addons/FracturalCommons/plugin.cfg", "res://addons/FracturalFSM/plugin.cfg" )
+enabled=PoolStringArray( "res://addons/FracturalCommons/plugin.cfg", "res://addons/FracturalFSM/plugin.cfg", "res://addons/editor_icon_previewer/plugin.cfg" )
 
 [gd2cs]
 

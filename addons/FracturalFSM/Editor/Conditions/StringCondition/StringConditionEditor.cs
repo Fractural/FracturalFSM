@@ -11,7 +11,8 @@ namespace Fractural.StateMachine
         [OnReadyGet("MarginContainer/StringValue")]
         public LineEdit stringValue;
 
-        private string _oldValue = "";
+        protected override string TypeEditorIcon => "String";
+        private string oldValue = "";
 
         [OnReady]
         public new void RealReady()
@@ -41,20 +42,20 @@ namespace Fractural.StateMachine
 
         private void OnStringValueTextEntered(string newText)
         {
-            ChangeValueAction(_oldValue, newText);
+            ChangeValueAction(oldValue, newText);
             stringValue.ReleaseFocus();
         }
 
         private void OnStringValueFocusEntered()
         {
             SetProcessInput(true);
-            _oldValue = stringValue.Text;
+            oldValue = stringValue.Text;
         }
 
         private void OnStringValueFocusExited()
         {
             SetProcessInput(false);
-            ChangeValueAction(_oldValue, stringValue.Text);
+            ChangeValueAction(oldValue, stringValue.Text);
         }
     }
 }

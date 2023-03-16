@@ -11,7 +11,9 @@ namespace Fractural.StateMachine
     public partial class BoolConditionEditor : ValueConditionEditor<bool>
     {
         [OnReadyGet("MarginContainer/BooleanValue")]
-        public CheckButton booleanValue;
+        private CheckButton booleanValue;
+
+        protected override string TypeEditorIcon => "bool";
 
         [OnReady]
         public new void RealReady()

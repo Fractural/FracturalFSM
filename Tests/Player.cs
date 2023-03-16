@@ -10,18 +10,18 @@ namespace Tests.Manual
         [OnReadyGet]
         private StateMachinePlayer stateMachinePlayer;
         private Vector2 velocity;
-        [Export]
         public Vector2 Velocity
         {
             get => velocity;
             set => velocity = value;
         }
-        [Export]
         public Vector2 WalkDirection { get; set; }
         [Export]
-        public float Speed { get; set; }
+        public float Speed { get; set; } = 500;
         [Export]
-        public float Damping { get; set; }
+        public float Gravity { get; set; } = 100;
+        [Export]
+        public float Damping { get; set; } = 0.1f;
 
         private float lastJumpTime = 0;
         private int jumpCount = 0;
@@ -35,7 +35,7 @@ namespace Tests.Manual
 
         private void OnStateUpdated(string state, float delta)
         {
-            Velocity += Vector2.Down * 9.8f * delta;
+            Velocity += Vector2.Down * Gravity * delta;
             switch (state)
             {
                 case "Idle":
@@ -62,7 +62,7 @@ namespace Tests.Manual
 
         private void OnTransited(string from, string to)
         {
-            //GD.Print($"Transition({from}->{to})");
+            GD.Print($"Transition({from}->{to})");
         }
 
         public override void _UnhandledInput(InputEvent @event)
@@ -73,6 +73,7 @@ namespace Tests.Manual
 
         public override void _PhysicsProcess(float delta)
         {
+            WalkDirection = Vector2.Zero;
             if (Input.IsActionPressed("ui_left"))
                 WalkDirection += Vector2.Left;
             if (Input.IsActionPressed("ui_right"))

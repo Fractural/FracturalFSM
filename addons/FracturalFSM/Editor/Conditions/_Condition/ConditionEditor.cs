@@ -11,9 +11,9 @@ namespace Fractural.StateMachine
         [Signal] public delegate void Removed();
 
         [OnReadyGet("Name")]
-        private LineEdit nameEdit;
+        protected LineEdit nameEdit;
         [OnReadyGet("Remove")]
-        private Button remove;
+        protected Button remove;
 
         protected UndoRedo undoRedo;
 

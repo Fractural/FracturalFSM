@@ -80,6 +80,7 @@ namespace Fractural.StateMachine
         /// <returns>Name of the next state</returns>
         public string Transit(string currentState, GDC.Dictionary transitParams = null, GDC.Dictionary localParams = null)
         {
+            // currentState = StateMachine / StateMachine / State
             if (transitParams == null) transitParams = new GDC.Dictionary();
             if (localParams == null) localParams = new GDC.Dictionary();
 
@@ -100,6 +101,7 @@ namespace Fractural.StateMachine
             // Nested StateMachine in Exit state
             if (isNested)
             {
+                // currentState = StateMachine / StateMachine / ExitState
                 var isNestedExit = nestedStates[nestedStates.Length - 1] == ExitState;
                 if (isNestedExit)
                 {
