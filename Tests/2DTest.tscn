@@ -87,10 +87,10 @@ script = ExtResource( 10 )
 Name = "space"
 
 [sub_resource type="Resource" id=61]
-script = ExtResource( 2 )
+script = ExtResource( 9 )
 Name = "jump_elapsed"
 Comparation = 5
-value = 1500.0
+value = 1500
 
 [sub_resource type="Resource" id=48]
 script = ExtResource( 1 )

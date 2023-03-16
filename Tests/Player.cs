@@ -19,11 +19,13 @@ namespace Tests.Manual
         [Export]
         public float Speed { get; set; } = 500;
         [Export]
-        public float Gravity { get; set; } = 100;
+        public float GravityForce { get; set; } = 98;
+        [Export]
+        public float JumpForce { get; set; } = 100;
         [Export]
         public float Damping { get; set; } = 0.1f;
 
-        private float lastJumpTime = 0;
+        private ulong lastJumpTime = 0;
         private int jumpCount = 0;
 
         [OnReady]
@@ -35,7 +37,7 @@ namespace Tests.Manual
 
         private void OnStateUpdated(string state, float delta)
         {
-            Velocity += Vector2.Down * Gravity * delta;
+            Velocity += Vector2.Down * GravityForce * delta;
             switch (state)
             {
                 case "Idle":
@@ -86,7 +88,7 @@ namespace Tests.Manual
 
         private void Jump()
         {
-            Velocity += Vector2.Up * 10f;
+            Velocity += Vector2.Up * JumpForce;
             lastJumpTime = OS.GetSystemTimeMsecs();
             jumpCount++;
         }
