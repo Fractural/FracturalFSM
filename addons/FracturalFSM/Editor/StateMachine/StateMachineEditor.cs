@@ -1055,7 +1055,6 @@ namespace Fractural.StateMachine
             ClearSelection();
             Select(line);
             OnEdited();
-
         }
 
         protected override void OnNodeDisconnected(FlowchartLayer layer, string from, string to)

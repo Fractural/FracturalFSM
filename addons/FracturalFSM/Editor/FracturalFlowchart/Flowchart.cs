@@ -718,63 +718,12 @@ namespace Fractural.Flowchart
                         else
                         {
                             // Left click released
-                            if (currentConnection != null)
-                            {
-                                // Connection end
-                                var from = currentConnection.FromNode.Name;
-                                var to = hitNode != null ? hitNode.Name : null;
-
-
-                                if (hitNode is FlowchartNode flowChartNode && RequestConnectTo(CurrentLayer, to) && from != to)
-                                {
-                                    // Connection success
-                                    FlowchartLine line;
-                                    if (currentConnection.ToNode != null)
-                                    {
-                                        // This is a reconnection
-                                        line = DisconnectNode(CurrentLayer, from, currentConnection.ToNode.Name);
-                                        currentConnection.ToNode = flowChartNode;
-                                        OnNodeReconnectEnd(CurrentLayer, from, to);
-                                        ConnectNode(CurrentLayer, from, to, line);
-                                    }
-                                    else
-                                    {
-                                        // New Connection
-                                        CurrentLayer.ContentLines.RemoveChild(currentConnection.Line);
-
-                                        line = currentConnection.Line;
-                                        currentConnection.ToNode = flowChartNode;
-                                        ConnectNode(CurrentLayer, from, to, line);
-                                    }
-                                }
-                                else
-                                {
-                                    // Connection failed
-                                    if (currentConnection.ToNode != null)
-                                    {
-                                        // This is a reconnection
-                                        // Rejoin the line back to where it was before
-                                        currentConnection.Join();
-                                        OnNodeReconnectFailed(CurrentLayer, from, Name);
-                                    }
-                                    else
-                                    {
-                                        // New Connection
-                                        currentConnection.Line.QueueFree();
-                                        OnNodeConnectFailed(CurrentLayer, from);
-                                    }
-                                }
-
-                                isConnecting = false;
-                                currentConnection = null;
-                                AcceptEvent();
-
-                            }
                             if (isDragging)
                             {
                                 // Drag end
                                 if (isDraggingOnBlankspace && CanGuiSelectNode)
                                 {
+                                    GD.Print("Dragged on blankspace isDragging:", isDragging, " isDraggingNode:", isDraggingNode, " isConnecting:", isConnecting);
                                     var selectionBoxRect = GetSelectionBoxRect();
                                     // Select node
                                     foreach (Control node in CurrentLayer.ContentNodes.GetChildren())
@@ -796,7 +745,7 @@ namespace Fractural.Flowchart
                                             Select(connection.Line);
                                     }
                                 }
-                                if (isDraggingNode)
+                                else if (isDraggingNode)
                                 {
                                     // Update _dragOrigins with new Position after dragged
                                     for (int i = 0; i < selection.Count; i++)
@@ -807,6 +756,58 @@ namespace Fractural.Flowchart
                                         color.a = 1f;
                                         selected.Modulate = color;
                                     }
+                                }
+                                else if (isConnecting && currentConnection != null)
+                                {
+                                    // Connection end
+                                    var from = currentConnection.FromNode.Name;
+                                    var to = hitNode != null ? hitNode.Name : null;
+
+
+                                    if (hitNode is FlowchartNode flowChartNode && RequestConnectTo(CurrentLayer, to) && from != to)
+                                    {
+                                        // Connection success
+                                        FlowchartLine line;
+                                        if (currentConnection.ToNode != null)
+                                        {
+                                            // This is a reconnection
+                                            line = DisconnectNode(CurrentLayer, from, currentConnection.ToNode.Name);
+                                            currentConnection.ToNode = flowChartNode;
+                                            OnNodeReconnectEnd(CurrentLayer, from, to);
+                                            ConnectNode(CurrentLayer, from, to, line);
+                                        }
+                                        else
+                                        {
+                                            // New Connection
+                                            CurrentLayer.ContentLines.RemoveChild(currentConnection.Line);
+
+                                            line = currentConnection.Line;
+                                            currentConnection.ToNode = flowChartNode;
+                                            ConnectNode(CurrentLayer, from, to, line);
+                                        }
+                                    }
+                                    else
+                                    {
+                                        // Connection failed
+                                        if (currentConnection.ToNode != null)
+                                        {
+                                            // This is a reconnection
+                                            // Rejoin the line back to where it was before
+                                            currentConnection.Join();
+                                            OnNodeReconnectFailed(CurrentLayer, from, Name);
+                                        }
+                                        else
+                                        {
+                                            // New Connection
+                                            currentConnection.Line.QueueFree();
+                                            OnNodeConnectFailed(CurrentLayer, from);
+                                        }
+                                    }
+
+                                    isConnecting = false;
+                                    currentConnection = null;
+                                    AcceptEvent();
+
                                 }
                                 if (selection.Count == 0)
                                     EmitSignal(nameof(NothingSelected));
