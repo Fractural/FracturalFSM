@@ -121,6 +121,7 @@ namespace Fractural.StateMachine
                 }
                 foreach (Condition condition in transition.Conditions.Values)
                 {
+                    GD.Print("\tTry adding label for " + condition.DisplayString());
                     Label label = conditionLabelContainer.GetNodeOrNull<Label>(condition.Name);
                     if (label == null)
                     {
@@ -149,11 +150,14 @@ namespace Fractural.StateMachine
 
         private void OnTransitionChanged(Transition newTransition)
         {
+            GD.Print("Transition changed");
             if (!IsInsideTree())
                 return;
 
+            GD.Print("Transition changed 2");
             if (newTransition != null)
             {
+                GD.Print("Transition changed 3");
                 newTransition.Connect(nameof(Transition.ConditionAdded), this, nameof(OnTransitionConditionAdded));
                 newTransition.Connect(nameof(Transition.ConditionRemoved), this, nameof(OnTransitionConditionRemoved));
 
@@ -171,6 +175,7 @@ namespace Fractural.StateMachine
         {
             condition.Connect(nameof(Condition.NameChanged), this, nameof(OnConditionNameChanged));
             condition.Connect(nameof(Condition.DisplayStringChanged), this, nameof(OnConditionDisplayStringChanged));
+            GD.Print("Added condition, updating label");
             UpdateLabel();
         }
 

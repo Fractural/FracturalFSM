@@ -82,6 +82,7 @@ namespace Fractural.StateMachine
         {
             if (Conditions.Contains(condition.Name))
                 return false;
+            GD.Print("AddCondition added");
             Conditions[condition.Name] = condition;
             EmitSignal(nameof(ConditionAdded), condition);
             return true;

@@ -723,7 +723,6 @@ namespace Fractural.Flowchart
                                 // Drag end
                                 if (isDraggingOnBlankspace && CanGuiSelectNode)
                                 {
-                                    GD.Print("Dragged on blankspace isDragging:", isDragging, " isDraggingNode:", isDraggingNode, " isConnecting:", isConnecting);
                                     var selectionBoxRect = GetSelectionBoxRect();
                                     // Select node
                                     foreach (Control node in CurrentLayer.ContentNodes.GetChildren())
@@ -783,7 +782,14 @@ namespace Fractural.Flowchart
 
                                             line = currentConnection.Line;
                                             currentConnection.ToNode = flowChartNode;
-                                            ConnectNode(CurrentLayer, from, to, line);
+                                            // Must have call deferred here otherwise we get the error:
+                                            // 
+                                            // Failed method: MarginContainer:_update_callback target ID: 170221
+                                            // Object was deleted while awaiting a callback
+                                            //
+                                            // This seems be caused by too many update calls (maybe even recursive update calls?)
+                                            // https://godotforums.org/d/31530-error-message-queue-out-of-memory-in-a-for-loop
+                                            CallDeferred(nameof(ConnectNode), CurrentLayer, from, to, line);
                                         }
                                     }
                                     else

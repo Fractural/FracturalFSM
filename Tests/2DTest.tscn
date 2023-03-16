@@ -1,7 +1,7 @@
-[gd_scene load_steps=19 format=2]
+[gd_scene load_steps=27 format=2]
 
 [ext_resource path="res://addons/FracturalFSM/Editor/Transition/Transition.cs" type="Script" id=1]
-[ext_resource path="res://addons/FracturalFSM/Editor/Conditions/TriggerCondition/TriggerCondition.cs" type="Script" id=2]
+[ext_resource path="res://addons/FracturalFSM/Editor/Conditions/FloatCondition/FloatCondition.cs" type="Script" id=2]
 [ext_resource path="res://Tests/Player.cs" type="Script" id=4]
 [ext_resource path="res://icon.png" type="Texture" id=5]
 [ext_resource path="res://addons/FracturalFSM/CustomTypes/StateMachine.cs" type="Script" id=6]
@@ -11,55 +11,120 @@
 [sub_resource type="Resource" id=2]
 script = ExtResource( 8 )
 __meta__ = {
-"graph_offset": Vector2( 248, 240 )
+"graph_offset": Vector2( 328, 220 )
 }
 Name = "Entry"
 
-[sub_resource type="Resource" id=42]
+[sub_resource type="Resource" id=36]
 script = ExtResource( 8 )
 __meta__ = {
-"graph_offset": Vector2( 568, 420 )
+"graph_offset": Vector2( 488, 220 )
+}
+Name = "Idle"
+
+[sub_resource type="Resource" id=37]
+script = ExtResource( 8 )
+__meta__ = {
+"graph_offset": Vector2( 648, 120 )
+}
+Name = "Walk"
+
+[sub_resource type="Resource" id=38]
+script = ExtResource( 8 )
+__meta__ = {
+"graph_offset": Vector2( 648, 340 )
 }
 Name = "Fall"
 
-[sub_resource type="Resource" id=50]
+[sub_resource type="Resource" id=39]
 script = ExtResource( 8 )
 __meta__ = {
-"graph_offset": Vector2( 968, 120 )
+"graph_offset": Vector2( 828, 220 )
 }
 Name = "Jump"
 
-[sub_resource type="Resource" id=41]
+[sub_resource type="Resource" id=40]
 script = ExtResource( 8 )
 __meta__ = {
-"graph_offset": Vector2( 904, 360 )
+"graph_offset": Vector2( 824, 340 )
 }
 Name = "Jump(n)"
 
-[sub_resource type="Resource" id=51]
-script = ExtResource( 8 )
-__meta__ = {
-"graph_offset": Vector2( 488, 160 )
-}
-Name = "State"
-
-[sub_resource type="Resource" id=48]
-script = ExtResource( 2 )
-Name = "space"
-
-[sub_resource type="Resource" id=49]
+[sub_resource type="Resource" id=41]
 script = ExtResource( 1 )
-From = "Fall"
-To = "Jump(n)"
+From = "Entry"
+To = "Idle"
 Conditions = {
-"space": SubResource( 48 )
+}
+priority = 0
+
+[sub_resource type="Resource" id=42]
+script = ExtResource( 1 )
+From = "Walk"
+To = "Jump"
+Conditions = {
+}
+priority = 0
+
+[sub_resource type="Resource" id=43]
+script = ExtResource( 1 )
+From = "Walk"
+To = "Idle"
+Conditions = {
+}
+priority = 0
+
+[sub_resource type="Resource" id=44]
+script = ExtResource( 1 )
+From = "Jump"
+To = "Fall"
+Conditions = {
 }
 priority = 0
 
 [sub_resource type="Resource" id=45]
 script = ExtResource( 1 )
-From = "Jump"
+From = "Idle"
+To = "Jump"
+Conditions = {
+}
+priority = 0
+
+[sub_resource type="Resource" id=46]
+script = ExtResource( 1 )
+From = "Idle"
 To = "Fall"
+Conditions = {
+}
+priority = 0
+
+[sub_resource type="Resource" id=49]
+script = ExtResource( 2 )
+Name = "walk"
+Comparation = 2
+value = 0.0
+
+[sub_resource type="Resource" id=50]
+script = ExtResource( 1 )
+From = "Idle"
+To = "Walk"
+Conditions = {
+"walk": SubResource( 49 )
+}
+priority = 0
+
+[sub_resource type="Resource" id=47]
+script = ExtResource( 1 )
+From = "Fall"
+To = "Idle"
+Conditions = {
+}
+priority = 0
+
+[sub_resource type="Resource" id=48]
+script = ExtResource( 1 )
+From = "Fall"
+To = "Jump(n)"
 Conditions = {
 }
 priority = 0
@@ -69,17 +134,31 @@ script = ExtResource( 6 )
 Name = ""
 States = {
 "Entry": SubResource( 2 ),
-"Fall": SubResource( 42 ),
-"Jump": SubResource( 50 ),
-"Jump(n)": SubResource( 41 ),
-"State": SubResource( 51 )
+"Fall": SubResource( 38 ),
+"Idle": SubResource( 36 ),
+"Jump": SubResource( 39 ),
+"Jump(n)": SubResource( 40 ),
+"Walk": SubResource( 37 )
 }
 transitions = {
+"Entry": {
+"Idle": SubResource( 41 )
+},
 "Fall": {
-"Jump(n)": SubResource( 49 )
+"Idle": SubResource( 47 ),
+"Jump(n)": SubResource( 48 )
+},
+"Idle": {
+"Fall": SubResource( 46 ),
+"Jump": SubResource( 45 ),
+"Walk": SubResource( 50 )
 },
 "Jump": {
-"Fall": SubResource( 45 )
+"Fall": SubResource( 44 )
+},
+"Walk": {
+"Idle": SubResource( 43 ),
+"Jump": SubResource( 42 )
 }
 }
 
