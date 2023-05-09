@@ -60,7 +60,7 @@ namespace Fractural.StateMachine
             stateMachineEditor.Connect(nameof(StateMachineEditor.NodeSelected), this, nameof(OnStateMachineEditorNodeSelected));
             stateMachineEditor.Connect(nameof(StateMachineEditor.NothingSelected), this, nameof(OnStateMachineEditorNothingSelected));
             //stateMachineEditor.Connect(nameof(StateMachineEditor.DebugModeChanged), this, nameof(OnStateMachineEditorDebugModeChanged));
-            stateMachineEditor.Construct(GetUndoRedo());
+            stateMachineEditor.Construct(GetUndoRedo(), AssetsRegistry);
 
             transitionInspector = new TransitionInspector(
                 GetUndoRedo(),

@@ -7,13 +7,22 @@ using Fractural.Utils;
 using System.Collections.Generic;
 using Fractural.Flowchart;
 using System.Linq;
+using Fractural.Plugin.AssetsRegistry;
 
 namespace Fractural.StateMachine
 {
     // TODO: Refactor out messaging from the editor
+    // TODO NOW: Add button to save state machine as external file.
     [Tool]
     public partial class StateMachineEditor : Flowchart.Flowchart
     {
+        public enum FileOptions
+        {
+            Save,
+            SaveAs,
+            SaveLocal,
+        }
+
         /// <summary>
         /// Emitted to inform plugin to refresh inspector
         /// </summary>
@@ -65,6 +74,10 @@ namespace Fractural.StateMachine
         private ConfirmationDialog convertToStateConfirmation;
         [OnReadyGet("SaveDialog")]
         private ConfirmationDialog saveDialog;
+        [OnReadyGet("SaveAsDialog")]
+        private FileDialog saveAsDialog;
+        [OnReadyGet("SaveLocalDialog")]
+        private ConfirmationDialog saveLocalDialog;
         [OnReadyGet("MarginContainer")]
         private MarginContainer createNewStateMachineContainer;
         [OnReadyGet("MarginContainer/CreateNewStateMachine")]
@@ -76,11 +89,13 @@ namespace Fractural.StateMachine
         private TextureButton conditionVisibility = new TextureButton();
         private Label unsavedIndicator = new Label();
         private VBoxContainer messageBox = new VBoxContainer();
+        private MenuButton fileOptions = new MenuButton();
 
         private Color editorAccentColor = Colors.White;
         private Texture transitionArrowIcon;
 
         private UndoRedo undoRedo;
+        private IAssetsRegistry assetsRegistry;
 
         private PackedScene stateNodePrefab;
         private PackedScene StateNodePrefab
@@ -247,9 +262,10 @@ namespace Fractural.StateMachine
         /// Called once to initialize the StateMachineEditor
         /// </summary>
         /// <param name="undoRedo"></param>
-        public void Construct(UndoRedo undoRedo)
+        public void Construct(UndoRedo undoRedo, IAssetsRegistry assetsRegistry)
         {
             this.undoRedo = undoRedo;
+            this.assetsRegistry = assetsRegistry;
         }
         #endregion
 
@@ -271,6 +287,32 @@ namespace Fractural.StateMachine
             conditionVisibility.Pressed = true;
             toolbar.AddChild(conditionVisibility);
 
+            saveAsDialog.RectSize *= assetsRegistry.Scale;
+            saveAsDialog.SetAnchorsAndMarginsPreset(LayoutPreset.Center, LayoutPresetMode.KeepSize);
+            saveAsDialog.Connect("file_selected", this, nameof(OnSaveAsDialogFileSelected));
+
+            var key = new InputEventKey();
+            key.Control = true;
+            key.Scancode = (uint)KeyList.S;
+            fileOptions.GetPopup().AddItem("Save", (int)FileOptions.Save, key.GetScancodeWithModifiers());
+
+            key = new InputEventKey();
+            key.Control = true;
+            key.Shift = true;
+            key.Scancode = (uint)KeyList.S;
+            fileOptions.GetPopup().AddItem("Save As", (int)FileOptions.SaveAs, key.GetScancodeWithModifiers());
+
+            key = new InputEventKey();
+            key.Control = true;
+            key.Shift = true;
+            key.Alt = true;
+            key.Scancode = (uint)KeyList.S;
+            fileOptions.GetPopup().AddItem("Save Local", (int)FileOptions.SaveLocal, key.GetScancodeWithModifiers());
+
+            fileOptions.GetPopup().Connect("index_pressed", this, nameof(OnFileOptionsItemSelected));
+            fileOptions.Text = "File";
+            toolbar.AddChild(fileOptions);
+
             unsavedIndicator.SizeFlagsVertical = (int)SizeFlags.ShrinkCenter;
             unsavedIndicator.FocusMode = FocusModeEnum.None;
             toolbar.AddChild(unsavedIndicator);
@@ -289,6 +331,7 @@ namespace Fractural.StateMachine
             stateNodeContextMenu.Connect("index_pressed", this, nameof(OnStateNodeContextMenuIndexPressed));
             convertToStateConfirmation.Connect("confirmed", this, nameof(OnConvertToStateConfirmationConfirmed));
             saveDialog.Connect("confirmed", this, nameof(OnSaveDialogConfirmed));
+            saveLocalDialog.Connect("confirmed", this, nameof(OnSaveLocalDialogConfirmed));
 
             var theme = this.GetThemeFromAncestor(true);
             SelectionStylebox.BgColor = theme.GetColor("box_selection_fill_color", "Editor");
@@ -342,23 +385,6 @@ namespace Fractural.StateMachine
             }
         }
 
-        public override void _Input(InputEvent inputEvent)
-        {
-            base._Input(inputEvent);
-            // Intercept save action
-            if (Visible && inputEvent is InputEventKey keyEvent)
-            {
-                switch (keyEvent.Scancode)
-                {
-                    case (int)ButtonList.Right:
-                        if (keyEvent.Control && keyEvent.Pressed)
-                            SaveRequest();
-                        break;
-                }
-            }
-        }
-
-
         // Process is only used by the debug
         public override void _Process(float delta)
         {
@@ -367,6 +393,28 @@ namespace Fractural.StateMachine
         #endregion
 
         #region Signal Wiring
+        private void OnSaveAsDialogFileSelected(string path)
+        {
+            StateMachine.ResourcePath = path;
+            Save();
+        }
+
+        private void OnFileOptionsItemSelected(int id)
+        {
+            switch ((FileOptions)id)
+            {
+                case FileOptions.Save:
+                    SaveRequest();
+                    break;
+                case FileOptions.SaveAs:
+                    SaveAsRequest();
+                    break;
+                case FileOptions.SaveLocal:
+                    SaveLocalRequest();
+                    break;
+            }
+        }
+
         private void OnPathViewerDirPressed(string dir, int index)
         {
             var path = pathViewer.SelectDir(dir);
@@ -465,6 +513,11 @@ namespace Fractural.StateMachine
         private void OnSaveDialogConfirmed()
         {
             Save();
+        }
+
+        private void OnSaveLocalDialogConfirmed()
+        {
+            SaveLocal();
         }
 
         private void OnCreateNewStateMachinePressed()
@@ -792,6 +845,14 @@ namespace Fractural.StateMachine
             if (!CanSave())
                 return;
 
+            var resourcePath = StateMachine.ResourcePath;
+            if (resourcePath.Contains(".scn") || resourcePath.Contains(".tscn"))
+            {
+                // Built-in resource will be saved by scene
+                unsavedIndicator.Text = "";
+                return;
+            }
+
             saveDialog.DialogText = $"Saving StateMachine to {StateMachine.ResourcePath}";
             saveDialog.PopupCentered();
         }
@@ -806,6 +867,43 @@ namespace Fractural.StateMachine
 
             unsavedIndicator.Text = "";
             ResourceSaver.Save(StateMachine.ResourcePath, StateMachine);
+        }
+
+        /// <summary>
+        /// Reqeust to save current editing StateMachine to a new file.
+        /// </summary>
+        private void SaveAsRequest()
+        {
+            saveAsDialog.PopupCentered();
+        }
+
+        /// <summary>
+        /// Save current editing StateMachine as a local resource of the current scene.
+        /// </summary>
+        private void SaveLocal()
+        {
+            // You can only save local when you're editing a StateMachinePlayer
+            if (StateMachinePlayer == null)
+                return;
+
+            // TOOD: Figure out if save local works
+            //       Probably doesn't work tho...
+            StateMachinePlayer.StateMachine.ResourceLocalToScene = true;
+            StateMachinePlayer.StateMachine.Name = "Resource";
+
+            Save();
+        }
+
+        /// <summary>
+        /// Request to save the current editing StateMachine as a local resource of the current scene.
+        /// </summary>
+        private void SaveLocalRequest()
+        {
+            // You can only save local when you're editing a StateMachinePlayer
+            if (StateMachinePlayer == null)
+                return;
+
+            saveLocalDialog.PopupCentered();
         }
 
         /// <summary>
@@ -918,8 +1016,6 @@ namespace Fractural.StateMachine
             if (resourcePath.Empty())
                 return false;
 
-            if (resourcePath.Contains(".scn") || resourcePath.Contains(".tscn")) // Built-in resource will be saved by scene
-                return false;
             return true;
         }
         #endregion
@@ -1139,6 +1235,28 @@ namespace Fractural.StateMachine
             }
             OnEdited();
         }
+        #endregion
+
+        #region Drag and Drop
+
+        public override bool CanDropData(Vector2 position, object data)
+        {
+            if (data is GDC.Dictionary dataDict)
+            {
+                if (dataDict.Contains("files"))
+                {
+                    var array = dataDict["files"] as GDC.Array;
+                    foreach (string path in array)
+                    {
+                        string filename = path.GetFileName();
+                        Type.GetType(filename)
+                    }
+                }
+            }
+            GD.Print("Try dropping: ", data);
+            return base.CanDropData(position, data);
+        }
+
         #endregion
 
         #region Debug

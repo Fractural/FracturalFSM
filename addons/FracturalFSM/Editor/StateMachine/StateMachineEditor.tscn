@@ -18,6 +18,9 @@ mouse_filter = 1
 size_flags_horizontal = 3
 size_flags_vertical = 3
 script = ExtResource( 1 )
+ScrollMargin = 1280
+ZoomMin = 0.232568
+ZoomMax = 2.0736
 
 [node name="MarginContainer" type="MarginContainer" parent="."]
 visible = false
@@ -52,6 +55,23 @@ items = [ "Copy", null, 0, false, false, 0, 0, null, "", false, "Duplicate", nul
 [node name="SaveDialog" type="ConfirmationDialog" parent="."]
 margin_right = 200.0
 margin_bottom = 70.0
+window_title = "Saving"
+
+[node name="SaveLocalDialog" type="ConfirmationDialog" parent="."]
+margin_left = 246.0
+margin_top = 142.0
+margin_right = 446.0
+margin_bottom = 212.0
+window_title = "Local Saving"
+dialog_text = "Making State Machine local to the current scene."
+
+[node name="SaveAsDialog" type="FileDialog" parent="."]
+margin_left = 77.0
+margin_top = 98.0
+margin_right = 932.0
+margin_bottom = 570.0
+window_title = "Save State Machine"
+filters = PoolStringArray( "*.tres ; Resource" )
 
 [node name="ConvertToStateConfirmation" type="ConfirmationDialog" parent="."]
 margin_right = 200.0
