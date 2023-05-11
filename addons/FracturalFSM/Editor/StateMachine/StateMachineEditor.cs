@@ -1245,16 +1245,24 @@ namespace Fractural.StateMachine
             {
                 if (dataDict.Contains("files"))
                 {
-                    var array = dataDict["files"] as GDC.Array;
+                    var array = dataDict["files"] as string[];
                     foreach (string path in array)
                     {
-                        string filename = path.GetFileName();
-                        Type.GetType(filename)
+                        if (path.GetExtension() == "cs")
+                        {
+                            string filename = path.GetFileName();
+                            Type type = ReflectionUtils.FindTypeName(filename);
+                            if (type != null && type.IsSubclassOf(typeof(State)))
+                            {
+                                // TODO NOW: Finish dropping data
+                                return true;
+                            }
+                        }
                     }
                 }
             }
             GD.Print("Try dropping: ", data);
-            return base.CanDropData(position, data);
+            return false;
         }
 
         #endregion

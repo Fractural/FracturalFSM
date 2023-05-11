@@ -60,6 +60,7 @@ namespace Fractural.StateMachine
 
         protected Texture icon;
 
+        public ValueCondition() { }
         public ValueCondition(string name = "", ComparationType comparation = ComparationType.Equal) : base(name)
         {
             Comparation = comparation;
