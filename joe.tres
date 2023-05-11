@@ -43,19 +43,19 @@ __meta__ = {
 }
 Name = "Jump(n)"
 
-[sub_resource type="Resource" id=37]
-script = ExtResource( 2 )
-__meta__ = {
-"graph_offset": Vector2( 648, 80 )
-}
-Name = "Walk"
-
 [sub_resource type="Resource" id=63]
 script = ExtResource( 2 )
 __meta__ = {
 "graph_offset": Vector2( 970, 194 )
 }
 Name = "State"
+
+[sub_resource type="Resource" id=37]
+script = ExtResource( 2 )
+__meta__ = {
+"graph_offset": Vector2( 648, 80 )
+}
+Name = "Walk"
 
 [sub_resource type="Resource" id=41]
 script = ExtResource( 3 )

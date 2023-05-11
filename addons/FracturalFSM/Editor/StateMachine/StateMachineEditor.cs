@@ -1255,6 +1255,7 @@ namespace Fractural.StateMachine
                             if (type != null && type.IsSubclassOf(typeof(State)))
                             {
                                 // TODO NOW: Finish dropping data
+                                // TODO NOW: Add rollback to IState
                                 return true;
                             }
                         }
